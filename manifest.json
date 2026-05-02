@@ -1,0 +1,10 @@
+{
+  "name": "プラネットシューティング",
+  "short_name": "PlanetShoot",
+  "description": "スペースシューティングゲーム",
+  "start_url": ".",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#000000",
+  "theme_color": "#00ff44"
+}

@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>出撃準備 — キャラ中心</title>
+  <style>
+    :root {
+      --bg0: #05060c;
+      --bg1: #0a1020;
+      --orange: #ff6a2a;
+      --orange-dim: rgba(255, 120, 60, 0.45);
+      --cyan: #4ad4ff;
+      --green: #3cff9a;
+      --text: #e8f2ff;
+      --muted: rgba(200, 220, 255, 0.55);
+      --btn-h: 5.25rem;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: radial-gradient(120% 80% at 50% 0%, #12182a 0%, var(--bg0) 45%, #08040a 100%);
+      color: var(--text);
+      overflow-x: hidden;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 薄いパーティクル */
+    .particles {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .particles span {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: rgba(255, 200, 160, 0.35);
+      border-radius: 50%;
+      animation: drift 14s linear infinite;
+    }
+    @keyframes drift {
+      0% { transform: translateY(-10vh) translateX(0); opacity: 0; }
+      8% { opacity: 1; }
+      100% { transform: translateY(110vh) translateX(-12px); opacity: 0; }
+    }
+
+    /* 上部：青い大パネルなし。1行ヘッダのみ */
+    .top-bar {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.65rem 1rem;
+      background: transparent;
+      border-bottom: 1px solid rgba(80, 140, 200, 0.2);
+    }
+    .top-bar h1 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: var(--text);
+    }
+    .top-bar .res {
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-align: right;
+    }
+
+    main {
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0.5rem 1rem 1rem;
+      max-width: 28rem;
+      margin: 0 auto;
+      width: 100%;
+      min-height: 0;
+    }
+
+    /* STAGE：キャラの上・小さく */
+    .stage-tag {
+      margin-top: 0.25rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: rgba(255, 180, 120, 0.95);
+      text-shadow: 0 0 12px rgba(255, 90, 40, 0.7);
+    }
+
+    /* キャラブロック：約40vh + 背後円形グロー */
+    .char-wrap {
+      position: relative;
+      width: 100%;
+      height: 40vh;
+      min-height: 200px;
+      max-height: 340px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0.35rem 0 0.5rem;
+    }
+    .char-glow {
+      position: absolute;
+      width: min(88vw, 22rem);
+      height: min(88vw, 22rem);
+      border-radius: 50%;
+      background: radial-gradient(
+        circle,
+        rgba(255, 60, 30, 0.35) 0%,
+        rgba(180, 30, 80, 0.18) 35%,
+        transparent 70%
+      );
+      filter: blur(2px);
+      animation: glowPulse 3.2s ease-in-out infinite;
+    }
+    @keyframes glowPulse {
+      0%, 100% { transform: scale(0.92); opacity: 0.75; }
+      50% { transform: scale(1.05); opacity: 1; }
+    }
+
+    .char {
+      position: relative;
+      z-index: 2;
+      height: 100%;
+      width: auto;
+      max-width: 100%;
+      object-fit: contain;
+      filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.65));
+    }
+    /* 画像が無い場合のプレースホルダ（SVG竜王シルエット風） */
+    .char-fallback {
+      position: relative;
+      z-index: 2;
+      height: 95%;
+      width: auto;
+      aspect-ratio: 3/4;
+      max-width: 85%;
+    }
+
+    /* 戦力バー：キャラの下・最小情報 */
+    .power {
+      width: 100%;
+      margin-top: 0.35rem;
+    }
+    .power-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 0.75rem;
+      margin-bottom: 0.35rem;
+    }
+    .power-row strong { font-size: 1.05rem; color: #fff; }
+    .power-row .delta { color: var(--green); font-weight: 700; }
+    .bar-track {
+      height: 8px;
+      border-radius: 4px;
+      background: rgba(20, 30, 55, 0.95);
+      border: 1px solid rgba(60, 100, 160, 0.4);
+      position: relative;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      width: 78%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, #0a8f44, #d4e020, #ff4422);
+      box-shadow: 0 0 10px rgba(255, 200, 80, 0.35);
+    }
+    .bar-tick {
+      position: absolute;
+      top: -3px;
+      bottom: -3px;
+      left: 46%;
+      width: 2px;
+      background: rgba(255, 255, 255, 0.85);
+      box-shadow: 0 0 6px #fff;
+    }
+
+    /* エネルギーライン + 粒子（キャラ→ボタン） */
+    .flow-gap {
+      position: relative;
+      flex: 1;
+      width: 100%;
+      min-height: 5rem;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .energy-svg {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      transform: translateX(-50%);
+      width: 120px;
+      height: 100%;
+      overflow: visible;
+    }
+    .energy-path {
+      fill: none;
+      stroke: url(#energyGrad);
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      filter: drop-shadow(0 0 6px rgba(255, 140, 70, 0.8));
+      stroke-dasharray: 12 10;
+      animation: dashFlow 1.8s linear infinite;
+    }
+    @keyframes dashFlow {
+      to { stroke-dashoffset: -44; }
+    }
+    .flow-gap .spark {
+      position: absolute;
+      left: calc(50% + 8px);
+      width: 4px;
+      height: 4px;
+      background: #ffddaa;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #ffaa66;
+      opacity: 0;
+      animation: sparkFall 2.4s ease-in infinite;
+    }
+    .flow-gap .spark:nth-child(2) { animation-delay: 0.4s; left: calc(50% - 4px); }
+    .flow-gap .spark:nth-child(3) { animation-delay: 0.9s; left: calc(50% + 14px); }
+    .flow-gap .spark:nth-child(4) { animation-delay: 1.2s; left: calc(50% - 12px); }
+    @keyframes sparkFall {
+      0% { top: 0%; opacity: 0; transform: scale(0.6); }
+      10% { opacity: 1; }
+      100% { top: 100%; opacity: 0; transform: scale(1.1); }
+    }
+
+    /* 出撃ボタン：大きめ・中央発光・ホバーで拡散 */
+    .sortie-wrap {
+      position: relative;
+      z-index: 3;
+      width: 100%;
+      padding-bottom: env(safe-area-inset-bottom, 0.5rem);
+    }
+    .sortie {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      min-height: var(--btn-h);
+      border: none;
+      border-radius: 1rem;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 800;
+      font-size: 1.35rem;
+      letter-spacing: 0.08em;
+      color: #fffaf5;
+      background: linear-gradient(180deg, #ff9a4a 0%, #ff4020 55%, #8a1208 100%);
+      box-shadow:
+        0 0 0 1px rgba(255, 220, 200, 0.35),
+        0 0 28px rgba(255, 80, 40, 0.55),
+        0 12px 32px rgba(0, 0, 0, 0.45);
+      overflow: hidden;
+      transition: transform 0.2s ease, box-shadow 0.35s ease;
+    }
+    .sortie::before {
+      content: "";
+      position: absolute;
+      inset: -40%;
+      background: radial-gradient(circle at 50% 40%, rgba(255, 255, 255, 0.45) 0%, transparent 42%);
+      opacity: 0.35;
+      animation: btnPulse 2.4s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes btnPulse {
+      0%, 100% { transform: scale(0.85); opacity: 0.25; }
+      50% { transform: scale(1.05); opacity: 0.5; }
+    }
+    .sortie::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+      pointer-events: none;
+    }
+    .sortie:hover,
+    .sortie:focus-visible {
+      transform: scale(1.03);
+      box-shadow:
+        0 0 0 2px rgba(255, 200, 160, 0.55),
+        0 0 48px rgba(255, 100, 50, 0.85),
+        0 0 80px rgba(255, 60, 30, 0.45),
+        0 16px 40px rgba(0, 0, 0, 0.5);
+    }
+    .sortie:active {
+      transform: scale(0.98);
+    }
+    .sortie .sub {
+      display: block;
+      margin-top: 0.2rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      opacity: 0.88;
+    }
+    .sortie-badge {
+      position: absolute;
+      top: -0.65rem;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 0.2rem 0.65rem;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #c8ffe8;
+      background: rgba(6, 36, 18, 0.95);
+      border: 1px solid rgba(80, 255, 150, 0.85);
+      border-radius: 999px;
+      box-shadow: 0 0 12px rgba(60, 255, 150, 0.45);
+    }
+    .cost-chip {
+      position: absolute;
+      right: 0.65rem;
+      bottom: 0.55rem;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #ffc8c8;
+      background: rgba(30, 8, 10, 0.92);
+      border: 1px solid rgba(255, 90, 90, 0.5);
+      padding: 0.15rem 0.4rem;
+      border-radius: 0.35rem;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px; height: 1px;
+      overflow: hidden; clip: rect(0,0,0,0);
+    }
+  </style>
+</head>
+<body>
+  <div class="particles" aria-hidden="true" id="particles"></div>
+
+  <header class="top-bar">
+    <h1>出撃準備</h1>
+    <p class="res">⛽ 10/10　● 999,942　💎 0</p>
+  </header>
+
+  <main>
+    <p class="stage-tag">STAGE 1-1</p>
+
+    <div class="char-wrap">
+      <div class="char-glow" aria-hidden="true"></div>
+      <!-- 竜王画像：同ディレクトリに char-ryuuou.png を置くと表示されます -->
+      <img
+        class="char"
+        src="char-ryuuou.png"
+        alt="竜王"
+        onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+      />
+      <svg class="char-fallback" viewBox="0 0 200 260" style="display:none" aria-hidden="true">
+        <defs>
+          <linearGradient id="cg" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#ff5530"/>
+            <stop offset="100%" style="stop-color:#661008"/>
+          </linearGradient>
+        </defs>
+        <path fill="url(#cg)" d="M100 20 L165 85 L140 240 L60 240 L35 85 Z" opacity="0.92"/>
+        <path fill="#1a0508" d="M70 100 L130 100 L120 175 L80 175 Z" opacity="0.55"/>
+        <circle cx="100" cy="72" r="18" fill="#ff2200" opacity="0.9"/>
+        <circle cx="100" cy="72" r="8" fill="#ffccaa"/>
+      </svg>
+    </div>
+
+    <section class="power" aria-label="戦力">
+      <div class="power-row">
+        <span>現在 <strong>258</strong></span>
+        <span class="delta">+138</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill"></div>
+        <span class="bar-tick" title="推奨"></span>
+      </div>
+    </section>
+
+    <div class="flow-gap" aria-hidden="true">
+      <svg class="energy-svg" viewBox="0 0 100 400" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="energyGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" style="stop-color:#ffcc88;stop-opacity:0.2"/>
+            <stop offset="50%" style="stop-color:#ff7722;stop-opacity:1"/>
+            <stop offset="100%" style="stop-color:#ff4400;stop-opacity:0.35"/>
+          </linearGradient>
+        </defs>
+        <path class="energy-path" d="M 50 0 Q 68 140 52 220 Q 44 320 50 400" />
+      </svg>
+      <span class="spark"></span>
+      <span class="spark"></span>
+      <span class="spark"></span>
+      <span class="spark"></span>
+    </div>
+
+    <div class="sortie-wrap">
+      <button type="button" class="sortie" id="sortieBtn">
+        <span class="sortie-badge">推奨OK！</span>
+        <span class="sr-only">出撃</span>
+        ▶ 出撃
+        <span class="sub">タップして開始</span>
+        <span class="cost-chip" aria-hidden="true">−1</span>
+      </button>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      var root = document.getElementById("particles");
+      var n = 48;
+      for (var i = 0; i < n; i++) {
+        var s = document.createElement("span");
+        s.style.left = (Math.random() * 100) + "%";
+        s.style.animationDuration = (10 + Math.random() * 12) + "s";
+        s.style.animationDelay = (Math.random() * 8) + "s";
+        root.appendChild(s);
+      }
+
+      var btn = document.getElementById("sortieBtn");
+      btn.addEventListener("click", function () {
+        btn.animate(
+          [
+            { boxShadow: "0 0 28px rgba(255,80,40,0.55), 0 12px 32px rgba(0,0,0,0.45)" },
+            { boxShadow: "0 0 64px rgba(255,160,80,0.95), 0 0 100px rgba(255,80,40,0.55), 0 12px 32px rgba(0,0,0,0.45)" },
+            { boxShadow: "0 0 28px rgba(255,80,40,0.55), 0 12px 32px rgba(0,0,0,0.45)" }
+          ],
+          { duration: 520, easing: "ease-out" }
+        );
+      });
+    })();
+  </script>
+</body>
+</html>

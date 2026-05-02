@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>プラネットシューティング</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+</head>
+<body>
+  <div id="rotate-hint">
+    <div style="font-size:2.5em">📱</div>
+    <div>横向きにしてください</div>
+    <div style="font-size:0.7em;opacity:0.5;margin-top:6px">Please rotate your device</div>
+  </div>
+  <div id="game-container">
+    <div id="hud">
+      <span>STAGE <span id="stage">1</span></span>
+      <span>Lv.<span id="level">1</span> <span id="exp-next" style="font-size:0.8em;opacity:0.75;">次まで100</span></span>
+      <span>HP <span id="lives">100/100</span></span>
+      <span>FUEL <span id="fuel">10/10</span> <span id="fuel-next" style="font-size:0.8em;opacity:0.65;"></span></span>
+      <span>● <span id="coins">0</span></span>
+      <span>💎 <span id="gems">0</span></span>
+    </div>
+    <canvas id="canvas" width="800" height="600"></canvas>
+    <div id="message" class="hidden"></div>
+    <!-- Shop hex tree panel (HTML overlay — replaces canvas panel) -->
+    <div id="shop-panel">
+      <div id="sp-hdr">
+        <div id="sp-icon"></div>
+        <div id="sp-info"><div id="sp-name">NODE</div><div id="sp-role"></div></div>
+        <span id="sp-tag">T1</span>
+      </div>
+      <div id="sp-lvrow"><div id="sp-lvdots"></div><div id="sp-lvtext">Lv 0/10</div></div>
+      <div id="sp-effect"></div>
+      <div id="sp-next"></div>
+      <div id="sp-req"></div>
+      <div id="sp-costrow"></div>
+      <div id="sp-btnrow"><button id="sp-btn" class="off">-</button></div>
+    </div>
+  </div>
+  <script type="module" src="main.js?v=108"></script>
+  <script>
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.register('./sw.js').catch(()=>{});
+    }
+  </script>
+</body>
+</html>
