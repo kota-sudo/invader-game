@@ -305,6 +305,34 @@ import {
   applyLoadoutSelection,
   computeBaseStats,
 } from './js/game/equipment.js';
+import { saveMaterials, saveEquipStars, addMaterial, saveShop } from './js/game/materials.js';
+import { addCombo } from './js/game/combo.js';
+import { initStars, genMapRoutes, chooseRoute } from './js/game/star-map.js';
+import { initAsteroids, spawnBoss, spawnDmgNum, spawnExplosion, trySpawnUFO, spawnPowerup } from './js/game/spawn-helpers.js';
+import { getWaveCount, getWaveSize, shouldSpawnBossAfterWavesClear, startWave } from './js/game/wave-system.js';
+import { isUpgradeMaxed, pickUpgradeChoices, applyUpgrade, applyLevelUpBonusRow, addExp } from './js/game/exp-level.js';
+import { getPetParams, updatePets } from './js/game/pets.js';
+import {
+  getUpgradeLvCost,
+  isMilestoneComplete,
+  getShopLv,
+  getShopItemById,
+  getShopPrereqs,
+  isShopPrereqsMet,
+  getShopPrereqText,
+  canUpgradeShopItem,
+  applyShopUpgrade,
+  getStatPreviewText,
+  getShopCurrentEffectOneLine,
+  updateShopPanel,
+  tryCompose,
+  tryCustomSynth,
+  tryEquipFusion,
+  saveLoadoutPreset,
+  applyLoadoutPreset,
+  dropMaterial,
+} from './js/game/shop-logic.js';
+import { rectsOverlap, checkPlayerHit, fireCounterShot, absorbWithShield, onPlayerHit } from './js/game/player-combat.js';
 
 initMasterVolumeFromStorage();
 installCanvasPolyfills();
@@ -348,52 +376,6 @@ function formatStageId(stageNum) {
 const hudController = createHudController({ game, stageEl, formatStageId, syncFuel, FUEL_CAP, formatFuelMmSs, fuelNextRegenMs });
 function updateHUD() { hudController.updateHUD(); }
 
-function isUpgradeMaxed(id) {
-  switch (id) {
-    case 'speed': return game.playerUpgrades.speed >= 4;
-    case 'firerate': return game.playerUpgrades.firerate >= 4;
-    case 'damage': return game.playerUpgrades.damage >= 5;
-    case 'bulletspd': return game.playerUpgrades.bulletSpd >= 9;
-    case 'spread': return game.playerUpgrades.spread;
-    default: return false;
-  }
-}
-function pickUpgradeChoices() {
-  // 上限済みを除外し、未出現を優先する
-  const available = UPGRADE_POOL.filter(u => !isUpgradeMaxed(u.id));
-  const unseen = available.filter(u => !game.seenUpgradeIds.has(u.id));
-  const seen = available.filter(u => game.seenUpgradeIds.has(u.id));
-  const pool = [...unseen.sort(() => Math.random() - 0.5), ...seen.sort(() => Math.random() - 0.5)];
-  // 既出かつ上限未満のものは「強化版」ラベルを付与
-  game.upgradeChoices = pool.slice(0, 3).map(u => {
-    if (game.seenUpgradeIds.has(u.id) && !isUpgradeMaxed(u.id)) {
-      return { ...u, label: u.label + ' ++', enhanced: true };
-    }
-    return { ...u, enhanced: false };
-  });
-}
-function applyUpgrade(idx) {
-  if (idx >= game.upgradeChoices.length) return;
-  const up = game.upgradeChoices[idx];
-  const mult = up.enhanced ? 2 : 1;
-  game.seenUpgradeIds.add(up.id);
-  playSound('upgrade_pick');
-  switch (up.id) {
-    case 'speed': game.playerUpgrades.speed = Math.min(game.playerUpgrades.speed + mult, 4); break;
-    case 'firerate': game.playerUpgrades.firerate = Math.min(game.playerUpgrades.firerate + mult, 4); break;
-    case 'life': game.playerStats.hp = Math.min(game.playerStats.maxHp, game.playerStats.hp + 30 * mult); updateHUD(); break;
-    case 'laser': game.weaponAmmo.laser += 15 * mult; break;
-    case 'homing': game.weaponAmmo.homing += 8 * mult; break;
-    case 'explosive': game.weaponAmmo.explosive += 8 * mult; break;
-    case 'damage': game.playerUpgrades.damage = Math.min(game.playerUpgrades.damage + mult, 5); break;
-    case 'spread': game.playerUpgrades.spread = true; break;
-    case 'invincible': game.playerUpgrades.invincibleBonus += 60 * mult; break;
-    case 'bulletspd': game.playerUpgrades.bulletSpd = Math.min(game.playerUpgrades.bulletSpd + 3 * mult, 9); break;
-    case 'shieldUp': game.playerShield = true; break;
-  }
-  genMapRoutes();
-  game.state = 'map';
-}
 
 function addCoins(amount) {
   const spc3Mult = 1 + (game.shopUpgrades?.spc3 || 0) * 0.10;
@@ -405,48 +387,6 @@ function addCoins(amount) {
 }
 
 // ===== EXP / レベル =====
-function applyLevelUpBonusRow(bonus) {
-  if (!bonus || !bonus.stat) return;
-  switch (bonus.stat) {
-    case 'firerate':
-      game.playerUpgrades.firerate = Math.min((game.playerUpgrades.firerate || 0) + 1, 6);
-      break;
-    case 'speed':
-      game.playerUpgrades.speed = Math.min((game.playerUpgrades.speed || 0) + 1, 6);
-      break;
-    case 'damage':
-      game.playerUpgrades.damage = Math.min((game.playerUpgrades.damage || 1) + 1, 8);
-      break;
-    case 'life':
-      game.playerStats.maxHp += 15;
-      game.playerStats.hp = Math.min(game.playerStats.maxHp, game.playerStats.hp + 15);
-      updateHUD();
-      break;
-    case 'bulletspd':
-      game.playerUpgrades.bulletSpd = Math.min((game.playerUpgrades.bulletSpd || 0) + 2, 10);
-      break;
-    case 'spread':
-      game.playerUpgrades.spread = true;
-      break;
-    default:
-      break;
-  }
-}
-
-function addExp(amount) {
-  const expBoost = (game.gachaInventory['passive_exp']?.level >= 1 ? 1.2 : 1) * (getPetEffect('exp') ? 1.15 : 1);
-  game.exp += Math.floor(amount * expBoost);
-  const nextThreshold = EXP_TABLE[Math.min(game.playerLevel, EXP_TABLE.length - 1)];
-  if (game.exp >= nextThreshold && game.playerLevel < 10) {
-    game.exp -= nextThreshold;
-    game.playerLevel++;
-    const bonus = LEVEL_BONUSES[(game.playerLevel - 2) % LEVEL_BONUSES.length];
-    applyLevelUpBonusRow(bonus);
-    game.levelUpDisplay = { text: bonus.label, timer: 180, color: '#ff0' };
-    triggerFlash(255, 220, 0, 0.25);
-    playSound('levelup');
-  }
-}
 // ===== チャージショット =====
 
 // ===== ダッシュ =====
@@ -537,526 +477,17 @@ const SURVIVAL_DURATION = 1800;
 // ===== ステージ評価 =====
 
 // ===== ウェーブシステム =====
-function useMarsWavePresetNow() {
-  return (
-    (game.stageType === 'normal' || game.stageType === 'endless') &&
-    !!getMarsWavePreset(game.stage)
-  );
-}
-
-function getWaveCount() {
-  if (useMarsWavePresetNow()) {
-    const p = getMarsWavePreset(game.stage);
-    if (p) return p.length;
-  }
-  return Math.min(4, 2 + Math.floor(game.stage / 5));
-}
-
-function getWaveSize(wn) { return Math.max(4, 3 + Math.floor(game.stage / 2) + (wn - 1) * 2); }
-
-function shouldSpawnBossAfterWavesClear() {
-  if (!useMarsWavePresetNow()) return true;
-  return marsPresetShouldAutoSpawnBossAfterWaves(game.stage);
-}
 
 // ===== デイリー／アクティブ任務／常設クエスト → js/game/missions-runtime.js =====
 
 // ===== ショップ =====
 // ===== 素材システム =====
 // scrap=🔩スクラップ core=⚡エネルギーコア crystal=💎量子結晶 composite=🔷コンポジットコア fusionStone=🔮融合石 starCrystal=💫星結晶
-function saveMaterials() { safeLocalStorageSetItem('invader_materials', JSON.stringify(game.materials)); }
-function saveEquipStars() { safeLocalStorageSetItem('invader_equip_stars', JSON.stringify(game.equipStars || {})); }
-function addMaterial(type, n = 1) {
-  game.materials[type] = (game.materials[type] || 0) + n; saveMaterials();
-  if (game.state === 'playing' && game.player) {
-    const icons = { scrap: '🔩', core: '⚡', crystal: '💎', composite: '🔷' };
-    game.matPopups.push({ x: game.player.x + game.player.w / 2 + (Math.random() - 0.5) * 50, y: game.player.y, text: `+${n}${icons[type] || type}`, timer: 55, vy: -0.9 });
-  }
-}
-function saveShop() { safeLocalStorageSetItem('invader_shop', JSON.stringify(game.shopUpgrades)); }
 
-function getUpgradeLvCost(lv) { return UPGRADE_LV_COSTS[Math.min(lv, UPGRADE_LV_COSTS.length - 1)]; }
-
-// ===== ショップ（強化）: スキルツリー前提条件（段階解放）=====
-// - ゴースト表示: 「次の枝」がうっすら見える（増えていく感）
-// - 実体化（強化可能）: 前提Lvを満たした瞬間に枝が伸びてノードがポップ
-// 新ツリー解放ルール（細かく枝が広がる）:
-// - 各カテゴリの1本目は最初から強化可
-// - Lv2/Lv3 で同カテゴリ内の枝が開く
-// - 一部は「カテゴリ合計Lv」で横枝が見える
-const SHOP_PREREQS_SOLID = {
-  // エンジン/移動（青）
-  speed: [],                       // 入口
-  // 攻撃（赤）
-  firerate: [],                       // 入口
-  critrate: [{ id: 'firerate', lv: 2 }],  // Lv2で横枝解放
-  // 防御（緑）
-  maxhp: [],                       // 入口
-  dashcd: [{ id: 'maxhp', lv: 2 }],   // Lv2で枝解放
-  def_regen: [{ id: 'maxhp', lv: 3 }],
-  // エネルギー（黄）
-  bulletspd: [{ id: 'speed', lv: 2 }],   // 移動強化が進むと見える
-  ene_over: [{ id: 'bulletspd', lv: 2 }],
-  // 機動（紫）
-  spd_boost: [{ id: 'speed', lv: 2 }],
-  spd_phase: [{ id: 'spd_boost', lv: 1 }],
-  atk_burst: [{ id: 'firerate', lv: 2 }],
-  ene_chain: [{ id: 'bulletspd', lv: 2 }],
-  arm1: [{ id: 'maxhp', lv: 3 }],
-  arm3: [{ id: 'arm1', lv: 2 }],
-  spc1: [{ id: 'speed', lv: 2 }],
-  spc2: [{ id: 'spc1', lv: 2 }],
-  spc3: [{ id: 'spc2', lv: 2 }],
-};
-const SHOP_PREREQS_GHOST = {
-  speed: [],
-  firerate: [],
-  critrate: [{ id: 'firerate', lv: 1 }],
-  maxhp: [],
-  dashcd: [{ id: 'maxhp', lv: 1 }],
-  def_regen: [{ id: 'maxhp', lv: 2 }],
-  bulletspd: [{ id: 'speed', lv: 1 }],
-  ene_over: [{ id: 'bulletspd', lv: 1 }],
-  spd_boost: [{ id: 'speed', lv: 1 }],
-  spd_phase: [{ id: 'spd_boost', lv: 1 }],
-  atk_burst: [{ id: 'firerate', lv: 1 }],
-  ene_chain: [{ id: 'bulletspd', lv: 1 }],
-  arm1: [{ id: 'maxhp', lv: 2 }],
-  arm3: [{ id: 'arm1', lv: 1 }],
-  spc1: [{ id: 'speed', lv: 1 }],
-  spc2: [{ id: 'spc1', lv: 1 }],
-  spc3: [{ id: 'spc2', lv: 1 }],
-};
-const _MILESTONE_BRANCHES = {
-  t3_overclock: ['firerate', 'critrate', 'atk_burst'],
-  t3_reflect: ['maxhp', 'dashcd', 'def_regen'],
-  t3_ghost: ['speed', 'spd_boost', 'spd_phase'],
-  t3_nova: ['bulletspd', 'ene_over', 'ene_chain'],
-  t3_chaos: ['spc1', 'spc2', 'spc3'],
-};
-function isMilestoneComplete(id) {
-  const branch = _MILESTONE_BRANCHES[id];
-  if (!branch) return false;
-  return branch.every(n => (game.shopUpgrades?.[n] || 0) >= SHOP_MAX_LV);
-}
-function getShopLv(id) { return game.shopUpgrades?.[id] || 0; }
-function getShopItemById(id) { return SHOP_ITEMS.find(it => it.id === id) || null; }
-function getShopPrereqs(id, mode = 'solid') {
-  const src = (mode === 'ghost') ? SHOP_PREREQS_GHOST : SHOP_PREREQS_SOLID;
-  return Array.isArray(src[id]) ? src[id] : [];
-}
-function isShopPrereqsMet(id, mode = 'solid') {
-  const reqs = getShopPrereqs(id, mode);
-  for (const r of reqs) {
-    if (getShopLv(r.id) < (r.lv || 0)) return false;
-  }
-  return true;
-}
-function getShopPrereqText(id, mode = 'solid') {
-  const reqs = getShopPrereqs(id, mode);
-  if (!reqs.length) return '';
-  const parts = reqs.map(r => {
-    const it = getShopItemById(r.id);
-    const name = it ? it.label : r.id;
-    return `${name}Lv${r.lv || 0}`;
-  });
-  return `必要: ${parts.join(' / ')}`;
-}
-
-function canUpgradeShopItem(item) {
-  const lv = game.shopUpgrades[item.id] || 0;
-  if (lv >= SHOP_MAX_LV) return false;
-  const [cost, mats, stReq] = getUpgradeLvCost(lv);
-  if (game.highestStage < stReq) return false;
-  if (!isShopPrereqsMet(item.id, 'solid')) return false;
-  if (game.coins < cost) return false;
-  for (const [k, v] of Object.entries(mats)) {
-    if (k === 'gems') { if (game.gems < v) return false; }
-    else if ((game.materials[k] || 0) < v) return false;
-  }
-  return true;
-}
-function applyShopUpgrade(idx) {
-  const item = SHOP_ITEMS[idx];
-  if (!item) return;
-  // 解放アニメ差分検出のため、事前に solid 状態を記録
-  const beforeSolid = {};
-  try {
-    for (const it of SHOP_ITEMS) beforeSolid[it.id] = isShopPrereqsMet(it.id, 'solid') || (getShopLv(it.id) > 0);
-  } catch (e) { }
-  const lv = game.shopUpgrades[item.id] || 0;
-  if (lv >= SHOP_MAX_LV) return;
-  const [cost, mats, stReq] = getUpgradeLvCost(lv);
-  if (game.highestStage < stReq) return;
-  if (!isShopPrereqsMet(item.id, 'solid')) return;
-  if (game.coins < cost) return;
-  for (const [k, v] of Object.entries(mats)) {
-    if (k === 'gems') { if (game.gems < v) return; }
-    else if ((game.materials[k] || 0) < v) return;
-  }
-  game.coins -= cost; saveCoins();
-  for (const [k, v] of Object.entries(mats)) {
-    if (k === 'gems') { game.gems -= v; saveGems(); }
-    else { game.materials[k] -= v; }
-  }
-  saveMaterials();
-  game.shopUpgrades[item.id]++;
-  saveShop();
-  // ツリー解放: 前提が繋がった／幹の初回強化で短い発光ライン
-  try {
-    if (!Array.isArray(game.shopTreeRevealAnims)) game.shopTreeRevealAnims = [];
-    const afterLv = (game.shopUpgrades[item.id] || 0);
-    const lvBefore = afterLv - 1;
-    if (lvBefore === 0 && afterLv >= 1) {
-      const reqs0 = getShopPrereqs(item.id, 'solid');
-      if (!reqs0.length) game.shopTreeRevealAnims.push({ from: 'core', to: item.id, start: game.frameCount, p: 0 });
-    }
-    for (const child of SHOP_ITEMS) {
-      const nowSolid = isShopPrereqsMet(child.id, 'solid') || (getShopLv(child.id) > 0);
-      if (!nowSolid || beforeSolid[child.id]) continue;
-      const reqs = getShopPrereqs(child.id, 'solid');
-      if (reqs.length) {
-        for (const r of reqs) game.shopTreeRevealAnims.push({ from: r.id, to: child.id, start: game.frameCount, p: 0 });
-      } else {
-        game.shopTreeRevealAnims.push({ from: 'core', to: child.id, start: game.frameCount, p: 0 });
-      }
-    }
-  } catch (e) { }
-  playSound('upgrade_pick');
-  updateHUD();
-  try { triggerShopHexBurst(item.id); } catch (e) { }
-}
-function getStatPreviewText(item, lv) {
-  if (lv >= SHOP_MAX_LV) return '';
-  const n = lv + 1;
-  switch (item.id) {
-    case 'speed': return `移動速度  +${lv} → +${n}`;
-    case 'firerate': return `連射速度  +${lv} → +${n}`;
-    case 'maxhp': return `最大HP  +${lv * 20} → +${n * 20}`;
-    case 'bulletspd': return `弾速  +${lv * 3} → +${n * 3}`;
-    case 'critrate': return `CRIT率  +${lv * 5}% → +${n * 5}%`;
-    case 'dashcd': return `無敵F  +${lv * 10} → +${n * 10}`;
-    case 'def_regen': return `自動回復 +${lv}/5sec → +${n}/5sec HP`;
-    case 'spd_boost': return `ダッシュ速度 +${lv * 10}% → +${n * 10}%`;
-    case 'spd_phase': return `ダッシュ無敵 +${lv * 5}F → +${n * 5}F${n === 1 ? ' (有効化)' : ''}`;
-    case 'ene_over': return `弾速 +${lv * 2} → +${n * 2}${n === 1 ? ' (貫通解放)' : ''}`;
-    case 'atk_burst': { const w = 2 + Math.ceil(lv / 2), wn = 2 + Math.ceil(n / 2), iv = Math.max(90, 300 - (lv - 1) * 22), ivn = Math.max(90, 300 - (n - 1) * 22); return `${w}way ${(iv / 60).toFixed(1)}s毎 → ${wn}way ${(ivn / 60).toFixed(1)}s`; }
-    case 'ene_chain': { const c = Math.ceil(lv / 2), cn = Math.ceil(n / 2), r = 70 + lv * 8, rn = 70 + n * 8; return `${c}連鎖 半径${r} → ${cn}連鎖 半径${rn}`; }
-    case 'arm1': return `被弾軽減 -${lv * 2}ダメ → -${n * 2}ダメ`;
-    case 'arm3': return `スパイク ${lv * 30}%反射 → ${n * 30}%`;
-    case 'spc1': return `ドロップ率 +${lv * 4}% → +${n * 4}%`;
-    case 'spc2': return `吸引半径 ${60 + lv * 20} → ${60 + n * 20}`;
-    case 'spc3': return `コイン +${lv * 10}% → +${n * 10}%`;
-    default: return '';
-  }
-}
-/** ショップツリー／詳細パネル用: 現在Lvの効果を1行で */
-function getShopCurrentEffectOneLine(item, lv) {
-  if (!item) return '';
-  const v = Math.max(0, Math.min(Number(lv) || 0, SHOP_MAX_LV));
-  switch (item.id) {
-    case 'speed': return `移動速度 +${v}`;
-    case 'firerate': return `連射速度 +${v}`;
-    case 'maxhp': return `最大HP +${v * 20}`;
-    case 'bulletspd': return `弾速 +${v * 3}`;
-    case 'critrate': return `CRIT率 +${v * 5}%`;
-    case 'dashcd': return `無敵F +${v * 10}`;
-    case 'def_regen': return `HP +${v}/5sec 自動回復`;
-    case 'spd_boost': return `ダッシュ速度 +${v * 10}%`;
-    case 'spd_phase': return `ダッシュ無敵 +${v * 5}F`;
-    case 'ene_over': return `弾速 +${v * 2}${v >= 1 ? ' (貫通中)' : ''}`;
-    case 'atk_burst': { const w = 2 + Math.ceil(v / 2), iv = Math.max(90, 300 - (v - 1) * 22); return `${w}way バースト ${(iv / 60).toFixed(1)}s毎`; }
-    case 'ene_chain': { const c = Math.ceil(v / 2), r = 70 + v * 8; return `${c}連鎖 半径${r}px`; }
-    case 'arm1': return `被弾軽減 -${v * 2}ダメ`;
-    case 'arm3': return `スパイク ${v * 30}%反射ダメ`;
-    case 'spc1': return `ドロップ率 +${v * 4}%`;
-    case 'spc2': return `吸引半径 ${60 + v * 20}px`;
-    case 'spc3': return `コイン +${v * 10}%`;
-    default: return '';
-  }
-}
-// ── HTML Shop Panel (HTML overlay, replaces canvas panel) ───────
-const _SP_ROLE_COL = {
-  core: '#a0d4ff', atk: '#ff4d5e', def: '#39e58f',
-  spd: '#b266ff', ene: '#ffdd55', arm: '#44aaff',
-  spc: '#ff8833', omega: '#e8e0ff',
-};
-const _SP_ROLE_NAMES = {
-  core: 'CORE', atk: 'ATK系統', def: 'DEF系統', spd: '機動系統',
-  ene: 'ENE系統', arm: '装甲系統', spc: '特殊系統', omega: 'OMEGA',
-};
-const _SP_MAT_ICON = { scrap: '🔩', core: '⚙', crystal: '💎', composite: '🔮', gems: '💠' };
-
-function _spRgb(hex) {
-  if (!hex || hex.length < 7) return '136,136,255';
-  return `${parseInt(hex.slice(1, 3), 16)},${parseInt(hex.slice(3, 5), 16)},${parseInt(hex.slice(5, 7), 16)}`;
-}
-
-function updateShopPanel(id) {
-  const panel = document.getElementById('shop-panel');
-  if (!panel) return;
-  const btn = document.getElementById('sp-btn');
-
-  if (!id) {
-    panel.classList.remove('open');
-    if (btn) btn.onclick = null;
-    return;
-  }
-
-  const nodeInfo = getShopHexNodeInfo(id);
-  if (!nodeInfo) return;
-
-  const { role, label, icon, tier, mystery, milestone, isShopItem, comingSoon, planned, desc } = nodeInfo;
-  const col = _SP_ROLE_COL[role] || '#88ccff';
-  const rgb = _spRgb(col);
-
-  const item = SHOP_ITEMS.find(it => it.id === id);
-  const lv = game.shopUpgrades?.[id] || 0;
-  const maxLv = SHOP_MAX_LV;
-  const showMystery = mystery && lv === 0;
-
-  // Header
-  const iconEl = document.getElementById('sp-icon');
-  if (iconEl) {
-    iconEl.textContent = (showMystery && !comingSoon) ? '?' : icon;
-    iconEl.style.cssText = `background:rgba(${rgb},0.12);border-color:${col};color:${col};`;
-  }
-  const nameEl = document.getElementById('sp-name');
-  if (nameEl) {
-    nameEl.textContent = (showMystery && (label === '???' || !comingSoon)) ? '???' : label;
-    nameEl.style.color = col;
-  }
-  const tagEl = document.getElementById('sp-tag');
-  if (tagEl) {
-    const tl = comingSoon ? 'COMING SOON' : (planned && !isShopItem && !showMystery) ? 'PLANNED' : tier === 0 ? 'CORE' : milestone ? 'MILESTONE' : tier === 4 ? 'ULTIMATE' : `TIER ${tier}`;
-    const tagCol = comingSoon ? 'rgba(255,170,80,0.80)' : (planned && !isShopItem && !showMystery) ? 'rgba(120,190,255,0.80)' : col;
-    tagEl.textContent = tl; tagEl.style.color = tagCol; tagEl.style.borderColor = tagCol;
-  }
-
-  // Level dots
-  const dotsEl = document.getElementById('sp-lvdots');
-  const lvTextEl = document.getElementById('sp-lvtext');
-  if (dotsEl) {
-    dotsEl.innerHTML = '';
-    if (isShopItem) {
-      for (let i = 0; i < maxLv; i++) {
-        const dot = document.createElement('div');
-        dot.className = 'sp-lvdot' + (i < lv ? ' on' : '');
-        if (i < lv) dot.style.cssText = `background:${col};box-shadow:0 0 5px ${col};`;
-        dotsEl.appendChild(dot);
-      }
-    }
-  }
-  if (lvTextEl) lvTextEl.textContent = !isShopItem ? (planned ? '近日実装予定' : '') : lv >= maxLv ? 'MAX' : lv === 0 ? '未解放' : `Lv ${lv} / ${maxLv}`;
-
-  // Effect text (combines current + next level in one line)
-  const effEl = document.getElementById('sp-effect');
-  if (effEl) {
-    if (comingSoon) {
-      effEl.textContent = '次のアップデートで実装予定のブランチです。';
-      effEl.style.color = 'rgba(255,170,80,0.60)';
-    } else if (showMystery) {
-      const hint = getShopHexMysteryHint(id);
-      effEl.textContent = hint || 'この先に何があるかは、解放した者だけが知る。';
-      effEl.style.color = showMystery && planned ? 'rgba(180,210,255,0.65)' : 'rgba(100,120,160,0.50)';
-    } else if (planned && !isShopItem && desc) {
-      effEl.textContent = desc;
-      effEl.style.color = 'rgba(180,210,255,0.75)';
-    } else if (isShopItem && item) {
-      if (lv === 0) {
-        effEl.textContent = item.desc || '-';
-      } else if (lv >= maxLv) {
-        effEl.textContent = getShopCurrentEffectOneLine(item, lv) + '  [MAX]';
-      } else {
-        effEl.textContent = getStatPreviewText(item, lv);
-      }
-      effEl.style.color = 'rgba(188,212,255,0.78)';
-    } else {
-      effEl.textContent = '';
-    }
-  }
-
-  // Prerequisite warning
-  const reqInfoEl = document.getElementById('sp-req');
-  if (reqInfoEl) {
-    reqInfoEl.style.display = 'none';
-    if (isShopItem && lv < maxLv && !isShopPrereqsMet(id)) {
-      const pt = getShopPrereqText(id);
-      if (pt) {
-        reqInfoEl.textContent = `⚠ ${pt}`;
-        reqInfoEl.style.display = 'block';
-      }
-    }
-  }
-
-  // Cost row
-  const costRow = document.getElementById('sp-costrow');
-  if (costRow) {
-    costRow.innerHTML = '';
-    if (isShopItem && lv < maxLv && !showMystery) {
-      const [coinCost, mats] = getUpgradeLvCost(lv);
-      const coinOk = game.coins >= coinCost;
-      const cs = document.createElement('span');
-      cs.className = 'sp-citem ' + (coinOk ? 'ok' : 'ng');
-      cs.textContent = `🪙 ${coinCost.toLocaleString()}${coinOk ? '' : ` (あと${(coinCost - game.coins).toLocaleString()})`}`;
-      costRow.appendChild(cs);
-      for (const [k, v] of Object.entries(mats)) {
-        const have = k === 'gems' ? (game.gems || 0) : (game.materials?.[k] || 0);
-        const ok2 = have >= v;
-        const ms = document.createElement('span');
-        ms.className = 'sp-mitem ' + (ok2 ? 'ok' : 'ng');
-        ms.textContent = `${_SP_MAT_ICON[k] || k}×${v}${ok2 ? '' : ` (あと${v - have})`}`;
-        costRow.appendChild(ms);
-      }
-    } else if (isShopItem && lv >= maxLv) {
-      const sp = document.createElement('span');
-      sp.className = 'sp-citem ok'; sp.textContent = '解放済み'; costRow.appendChild(sp);
-    }
-  }
-
-  // Button
-  if (btn) {
-    btn.className = '';
-    btn.onclick = null;
-    if (comingSoon) {
-      btn.textContent = '— COMING SOON —';
-      btn.className = 'maxed';
-    } else if (planned && !isShopItem) {
-      btn.textContent = '— 近日実装予定 —';
-      btn.className = 'maxed';
-    } else if (!isShopItem || id === 'core') {
-      btn.textContent = id === 'core' ? '— CORE —' : '強化不可';
-      btn.className = 'maxed';
-    } else if (lv >= maxLv) {
-      btn.textContent = '✦  MAX  LEVEL';
-      btn.className = 'maxed';
-    } else if (!isShopPrereqsMet(id)) {
-      btn.textContent = `🔒  ${getShopPrereqText(id)}`;
-      btn.className = 'off';
-    } else {
-      const [coinCost] = getUpgradeLvCost(lv);
-      const [, , stReq] = getUpgradeLvCost(lv);
-      if (game.highestStage < stReq) {
-        btn.textContent = `🔒 ステージ${stReq}クリアが必要 (現在: ${game.highestStage})`;
-        btn.className = 'off';
-      } else if (!canUpgradeShopItem(item)) {
-        btn.textContent = game.coins < coinCost ? '🪙 コイン不足' : '素材が足りない';
-        btn.className = 'off';
-      } else {
-        const itemIdx = SHOP_ITEMS.indexOf(item);
-        btn.textContent = lv === 0
-          ? `解放する  —  🪙 ${coinCost.toLocaleString()}`
-          : `▲ 強化する  Lv${lv + 1}へ  —  🪙 ${coinCost.toLocaleString()}`;
-        btn.onclick = () => { applyShopUpgrade(itemIdx); updateShopPanel(id); };
-      }
-    }
-  }
-
-  panel.classList.add('open');
-}
-
-function tryCompose(n = 1) {
-  const maxN = Math.min(Math.floor((game.materials.scrap || 0) / 5), Math.floor((game.materials.core || 0) / 3));
-  const times = n === 'max' ? maxN : Math.min(Number(n), maxN);
-  if (times <= 0) return;
-  game.materials.scrap -= 5 * times; game.materials.core -= 3 * times;
-  game.materials.composite = (game.materials.composite || 0) + times;
-  saveMaterials(); playSound('powerup');
-  game.lifeGainDisplay = { text: `🔷 コンポジット×${times} 合成完了!`, timer: 120, color: '#ffaa44' };
-}
-
-function tryCustomSynth(recipeId, times = 1) {
-  const recipe = SYNTH_RECIPES.find(r => r.id === recipeId);
-  if (!recipe) return;
-  const maxN = Object.entries(recipe.input).reduce(
-    (mn, [k, v]) => Math.min(mn, Math.floor((game.materials[k] || 0) / v)), Infinity);
-  const n = times === 'max' ? maxN : Math.min(Number(times), maxN);
-  if (n <= 0) return;
-  for (const [k, v] of Object.entries(recipe.input)) game.materials[k] = (game.materials[k] || 0) - v * n;
-  game.materials[recipe.output.type] = (game.materials[recipe.output.type] || 0) + recipe.output.n * n;
-  saveMaterials(); playSound('powerup');
-  const icon = { scrap: '🔩', core: '⚡', crystal: '💎', composite: '🔷', fusionStone: '🔮', starCrystal: '💫' }[recipe.output.type] || '◆';
-  game.lifeGainDisplay = { text: `${icon} ${recipe.label} ×${n} 完了!`, timer: 120, color: '#aaddff' };
-}
-
-const _FUSION_STAR_COSTS = [200, 500, 1000, 2000, 4000];
-const _FUSION_STONE_COSTS = [1, 2, 3, 4, 5];
-
-function tryEquipFusion(itemId) {
-  if (!itemId) return;
-  const curStars = game.equipStars?.[itemId] || 0;
-  if (curStars >= 5) return;
-  const stoneCost = _FUSION_STONE_COSTS[curStars];
-  const coinCost = _FUSION_STAR_COSTS[curStars];
-  if ((game.materials?.fusionStone || 0) < stoneCost) return;
-  if ((game.coins || 0) < coinCost) return;
-  game.materials.fusionStone -= stoneCost;
-  game.coins -= coinCost;
-  game.equipStars = game.equipStars || {};
-  game.equipStars[itemId] = curStars + 1;
-  saveEquipStars(); saveMaterials();
-  const item = [...EQUIP_POOL].find(e => e.id === itemId);
-  game.lifeGainDisplay = { text: `✨ ${item?.label || itemId} ★${curStars + 1} 融合完了!`, timer: 150, color: '#ffdd44' };
-  playSound('powerup');
-}
-// ⑪ ビルドプリセット
-function saveLoadoutPreset(slot) {
-  if (slot < 0 || slot > 2) return;
-  const presets = Array.isArray(game.loadoutPresets) ? [...game.loadoutPresets] : [];
-  while (presets.length < 3) presets.push(null);
-  presets[slot] = {
-    charId: game.playerLoadout.charId || null,
-    equip: (game.playerLoadout.equip || [null,null,null]).slice(),
-    pets: (game.playerLoadout.pets || [null,null,null]).slice(),
-    weaponId: game.playerLoadout.weaponId || null,
-  };
-  game.loadoutPresets = presets;
-  safeLocalStorageSetItem('invader_loadout_presets', JSON.stringify(presets));
-  game.lifeGainDisplay = { text: `📋 プリセット P${slot+1} を保存`, timer: 120, color: '#ffdd44' };
-  playSound('powerup');
-}
-function applyLoadoutPreset(slot) {
-  const presets = Array.isArray(game.loadoutPresets) ? game.loadoutPresets : [];
-  const p = presets[slot];
-  if (!p) {
-    // 空スロット: 現在の編成を保存
-    saveLoadoutPreset(slot);
-    return;
-  }
-  game.playerLoadout.charId = p.charId;
-  game.playerLoadout.equip = Array.isArray(p.equip) ? p.equip.slice() : [null,null,null];
-  game.playerLoadout.pets = Array.isArray(p.pets) ? p.pets.slice() : [null,null,null];
-  game.playerLoadout.weaponId = p.weaponId;
-  saveLoadout();
-  game.lifeGainDisplay = { text: `📋 プリセット P${slot+1} を適用`, timer: 120, color: '#88ffcc' };
-  playSound('powerup');
-}
-
-function dropMaterial() {
-  const p = getPlanet(game.stage).name;
-  const r = Math.random();
-  if (p === 'MARS') {
-    if (r < 0.45) addMaterial('scrap');
-  } else if (p === 'VENUS' || p === 'JUPITER') {
-    if (r < 0.25) addMaterial('scrap');
-    if (r >= 0.25 && r < 0.55) addMaterial('core');
-  } else { // SATURN
-    if (r < 0.30) addMaterial('crystal');
-    if (r >= 0.30 && r < 0.50) addMaterial('core', Math.random() < 0.4 ? 2 : 1);
-  }
-}
 
 // ===== マップ =====
 
 // ===== 星 =====
-function initStars() {
-  game.stars = [];
-  for (let i = 0; i < 200; i++) game.stars.push({
-    x: Math.random() * W, y: Math.random() * H,
-    size: Math.random() < 0.6 ? 1 : Math.random() < 0.8 ? 1.5 : 2,
-    speed: 0.08 + Math.random() * 0.4, twinkle: Math.random() * Math.PI * 2, layer: Math.floor(Math.random() * 3),
-  });
-}
 /** decayDiv 大きいほど短いフラッシュ（タイトルは 6 程度で約 0.1s） */
 function triggerFlash(r, g, b, alpha = 0.5, decayDiv = 25) { game.screenFlash = { r, g, b, alpha, decay: alpha / decayDiv }; }
 function triggerShake(i, d) { game.shakeIntensity = i; game.shakeTimer = d; }
@@ -1154,19 +585,6 @@ function addUltimateGauge(amount) {
   if (game.ultimateGauge >= ULTIMATE_MAX) playSound('charge_full');
 }
 
-function genMapRoutes() {
-  const pool = game.stage <= 2 ? ['normal', 'survival'] : ['normal', 'survival', 'boss_rush'];
-  const a = pool[Math.floor(Math.random() * pool.length)];
-  let b; do { b = pool[Math.floor(Math.random() * pool.length)]; } while (b === a);
-  game.mapRoutes = [a, b];
-}
-function chooseRoute(idx) {
-  if (idx >= game.mapRoutes.length) return;
-  let t = game.mapRoutes[idx];
-  if (t === 'escort') t = 'normal';
-  game.stageType = t;
-  nextStage();
-}
 function calcRank() {
   return rankFromTotal(computeStageRankTotal(game.stageStats, game.stageType));
 }
@@ -1178,22 +596,6 @@ function getPetEffect(eff) {
   });
 }
 
-function getPetParams(effect, level) {
-  const lv = Math.max(1, level || 1);
-  const bonus = (lv - 1) * 0.01; // 1Lvごとに+1%
-  const FPS = 60;
-  const base = {
-    dragon: { intervalFrames: 180 },
-    hawk: { intervalFrames: 180 },
-    bomber: { intervalFrames: 480 },
-    ghost: { intervalFrames: 600, durationFrames: 70 },
-    fenrir: { intervalFrames: 180 },
-  }[effect] || { intervalFrames: 180 };
-
-  const intervalFrames = Math.max(FPS, Math.round(base.intervalFrames / (1 + bonus))); // 最低1秒
-  const durationFrames = base.durationFrames ? Math.max(1, Math.round(base.durationFrames * (1 + bonus))) : 0;
-  return { intervalFrames, durationFrames, bonus };
-}
 function calcPlayerDmg(base) {
   const isCrit = Math.random() * 100 < game.playerStats.crit;
   const berserk = (game.gachaInventory['passive_berserker']?.level >= 1 && game.playerStats.hp <= game.playerStats.maxHp * 0.5) ? 1.5 : 1;
@@ -1333,56 +735,6 @@ function initStage() {
   startWave(1);
 }
 
-function startWave(n) {
-  game.waveNum = n;
-  game.waveState = 'active';
-  game.waveKills = 0;
-  game.waveBannerTimer = 90;
-  game.invaders = [];
-  game.invaderBullets = [];
-  game.sessionProgress.maxWave = Math.max(game.sessionProgress.maxWave, n);
-  game.questLifetime.maxWaveEver = Math.max(game.questLifetime.maxWaveEver || 0, n);
-  persistDailyMissionState();
-
-  game.marsWaveAwaitMiniBossClear = false;
-
-  const preset = useMarsWavePresetNow() ? getMarsWavePreset(game.stage) : null;
-  const spec = preset && preset[n - 1];
-
-  if (preset && spec) {
-    game.waveTargetKills = countMarsWaveRegularEnemies(spec);
-
-    if (marsWaveHasBoss(spec)) {
-      spawnBoss();
-      game.bossPhase = true;
-      playSound('event_start');
-      return;
-    }
-
-    game.marsWaveAwaitMiniBossClear = marsWaveHasMidBoss(spec);
-
-    const midN = Math.max(0, Math.floor(spec.MID_BOSS || 0));
-    if (midN > 0) {
-      const mbHp = Math.round(12 + game.stage * 5);
-      for (let i = 0; i < midN; i++) {
-        const spread = (i - (midN - 1) / 2) * 85;
-        spawnMiniBoss(W / 2 - 35 + spread, 72 + i * 5, mbHp);
-      }
-    }
-
-    const types = expandMarsWaveSpawnTypes(spec);
-    for (const t of types) spawnInvaderOfType(t);
-
-    playSound('event_start');
-    return;
-  }
-
-  game.waveTargetKills = getWaveSize(n);
-  const count = game.waveTargetKills;
-  for (let i = 0; i < count; i++) spawnInvader();
-  playSound('event_start');
-}
-
 function respawn() {
   game.bullets = []; game.invaderBullets = []; game.particles = [];
   const _d = getShipDims(); game.player.w = _d.w; game.player.h = _d.h;
@@ -1392,109 +744,12 @@ function respawn() {
 }
 
 // ===== 小惑星 =====
-function initAsteroids() {
-  const count = 2 + Math.floor(game.stage / 2);
-  for (let i = 0; i < count; i++) {
-    const sz = 30 + Math.random() * 40;
-    game.asteroids.push({
-      x: Math.random() * (W - sz), y: 30 + Math.random() * (H * 0.55 - sz),
-      w: sz, h: sz, vx: (Math.random() - 0.5) * 1.2, vy: (Math.random() - 0.5) * 0.8,
-      hp: 3, maxHp: 3, angle: Math.random() * Math.PI * 2, rotSpeed: (Math.random() - 0.5) * 0.02,
-      alive: true,
-    });
-  }
-}
 
 // ===== スポーン =====
-function spawnBoss() {
-  const _d = game.bossDifficulty ?? 1;
-  const _hpMul = [0.65, 1.0, 1.6][_d], _spdMul = [0.8, 1.0, 1.25][_d], _fireMul = [1.4, 1.0, 0.75][_d];
-  const hp = Math.round((12 + game.stage * 6) * _hpMul);
-  const ability = game.selectedBossAbility || (game.stage <= 2 ? 'burst' : game.stage <= 4 ? 'split' : game.stage <= 6 ? 'teleport' : game.stage <= 8 ? 'shield' : game.stage <= 10 ? 'dasher' : 'barrage');
-  game.boss = {
-    bossId: (game.stage === 1 ? 'dragonLord' : null),
-    x: W / 2 - 60, y: -80, w: 120, h: 60, hp, maxHp: hp, dir: 1,
-    speed: (ability === 'dasher' ? 2.8 + game.stage * 0.2 : ability === 'barrage' ? 0.8 + game.stage * 0.15 : 1.5 + game.stage * 0.3) * _spdMul,
-    shootTimer: 0,
-    shootInterval: Math.round((ability === 'barrage' ? Math.max(35, 110 - game.stage * 5) : Math.max(25, 90 - game.stage * 5)) * _fireMul),
-    frame: 0, frameTimer: 0, phase: 0, entryDone: false,
-    ability,
-    teleportTimer: 150,
-    shieldHp: 0, shieldMax: 0, shielded: false,
-    splitDone: false,
-    attackCharge: 0, nextPattern: null, aimTarget: null,
-    dying: false, dyingTimer: 0,
-    // DASHER用
-    dashTimer: Math.max(60, 120 - game.stage * 5), _dashing: false, _dashVx: 0, _dashDuration: 0,
-    // BARRAGE用
-    barrageCharge: 0,
-  };
-  if (ability === 'shield') {
-    game.boss.shieldMax = 10 + game.stage * 2;
-    game.boss.shieldHp = game.boss.shieldMax;
-    game.boss.shielded = true;
-  }
-  game.bossWarningTimer = 150; game.healerSpawnTimer = 0;
-}
 
 // Boss render/attackAnim scaffold now lives in js/game/boss-render.js
 
-function spawnDmgNum(x, y, val, isCrit = false, isHeal = false) {
-  game.damageNumbers.push({ x, y: y - 10, val, isCrit, isHeal, timer: 55, vy: -1.8 });
-}
-function spawnExplosion(x, y, color, count = 12) {
-  for (let i = 0; i < count; i++) {
-    const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5;
-    const spd = 2 + Math.random() * 3;
-    game.particles.push({
-      x, y, vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd,
-      life: 1.0, decay: 0.03 + Math.random() * 0.02, size: 3 + Math.random() * 4, color
-    });
-  }
-}
-
-function trySpawnUFO() {
-  if (useMarsWavePresetNow() && game.stage < 7) return;
-  if (!game.ufo && !game.bossPhase && Math.random() < 0.003)
-    game.ufo = {
-      x: -60, y: 30, w: 56, h: 24, speed: 2 + Math.random(),
-      points: [50, 100, 150, 200, 300][Math.floor(Math.random() * 5)]
-    };
-}
-
-function spawnPowerup(x, y) {
-  const r = Math.random();
-  if (r < 0.04) game.powerups.push({ x: x - 12, y, w: 24, h: 16, vy: 1.5, type: 'heal' });
-  else if (r < 0.07) game.powerups.push({ x: x - 12, y, w: 24, h: 16, vy: 1.5, type: 'shield' });
-  else if (r < 0.19) {
-    const types = ['double', 'invincible', 'wide'];
-    game.powerups.push({ x: x - 12, y, w: 24, h: 16, vy: 1.5, type: types[Math.floor(Math.random() * 3)] });
-  }
-}
-
 // ===== コンボ =====
-function addCombo(x, y, baseScore) {
-  ensureNormalQuestProfile();
-  game.questLifetime.totalKills++;
-  game.combo++; game.comboTimer = 90; game.stageStats.kills++;
-  game.stageStats.maxCombo = Math.max(game.stageStats.maxCombo, game.combo);
-  game.sessionProgress.maxCombo = Math.max(game.sessionProgress.maxCombo, game.combo);
-  game.questLifetime.maxComboEver = Math.max(game.questLifetime.maxComboEver, game.combo);
-  checkAndClaimMissions();
-  if (game.combo >= 10) unlockAchievement('combo10');
-  addUltimateGauge(6);
-  const mult = Math.min(game.combo, 8);
-  const bonus = baseScore * mult;
-  game.score += bonus;
-  game.comboDisplay = { x, y, text: game.combo > 1 ? `x${mult} COMBO! +${bonus}` : `+${bonus}`, timer: 60 };
-  if (game.combo >= 5) triggerFlash(255, 255, 0, 0.08 + game.combo * 0.02);
-  if (game.score >= game.nextLifeScore) {
-    game.nextLifeScore += 5000; game.playerStats.hp = Math.min(game.playerStats.maxHp, game.playerStats.hp + 20); updateHUD();
-    game.lifeGainDisplay = { text: 'SCORE BONUS  HP +20', timer: 120, color: '#ff0' };
-    triggerFlash(255, 200, 0, 0.2); playSound('stage_clear');
-  }
-  updateHUD();
-}
 
 // ===== ダッシュ =====
 function tryDash() {
@@ -1562,7 +817,7 @@ function fireBullet() {
     game.weaponAmmo.homing--;
     if (game.weaponAmmo.homing <= 0 && currentWeapon() === 'homing') cycleWeapon();
     let target = null, minDist = Infinity;
-    const cands = [...invaders.filter(i => i.alive), ...(game.boss ? [game.boss] : []), ...miniBosses.filter(m => m.alive), ...healers.filter(h => h.alive)];
+    const cands = [...game.invaders.filter(i => i.alive), ...(game.boss ? [game.boss] : []), ...game.miniBosses.filter(m => m.alive), ...game.healers.filter(h => h.alive)];
     for (const t of cands) {
       const dx = (t.x + t.w / 2) - cx, dy = (t.y + t.h / 2) - game.player.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
@@ -2002,86 +1257,6 @@ function updateBossMinions() {
 }
 
 // ===== ペット更新 =====
-function updatePets() {
-  if (!game.player || game.state !== 'playing') return;
-  const activePets = game.playerLoadout.pets.map((pid, i) => {
-    if (!pid || !game.gachaInventory[pid]) return null;
-    return { def: PET_POOL.find(p => p.id === pid), idx: i, pid, inv: game.gachaInventory[pid] };
-  }).filter(Boolean);
-  for (const { def, idx, pid, inv } of activePets) {
-    const lv = (inv?.level) || 1;
-    const pp = getPetParams(def.effect, lv);
-    // dragon: 180フレーム(3秒)毎に前方に火球
-    if (def.effect === 'dragon') {
-      game.petTimers.dragon = (game.petTimers.dragon || 0) + 1;
-      if (game.petTimers.dragon >= pp.intervalFrames) {
-        game.petTimers.dragon = 0;
-        const cx = game.player.x + game.player.w / 2;
-        game.bullets.push({ x: cx - 5, y: game.player.y - 10, w: 10, h: 10, explosive: true, bspd: BULLET_SPEED + 2, petBullet: true });
-        playSound('shoot_expl');
-      }
-    }
-    // hawk: 180フレーム毎にホーミング
-    if (def.effect === 'hawk') {
-      game.petTimers.hawk = (game.petTimers.hawk || 0) + 1;
-      if (game.petTimers.hawk >= pp.intervalFrames) {
-        game.petTimers.hawk = 0;
-        let target = null, minDist = Infinity;
-        const cands = [...invaders.filter(i => i.alive), ...(game.boss ? [game.boss] : []), ...miniBosses.filter(m => m.alive)];
-        const cx = game.player.x + game.player.w / 2;
-        for (const t of cands) { const d = Math.hypot((t.x + t.w / 2) - cx, (t.y + t.h / 2) - game.player.y); if (d < minDist) { minDist = d; target = t; } }
-        game.bullets.push({ x: cx - 3, y: game.player.y - 10, w: 6, h: 14, homing: true, target, bspd: BULLET_SPEED, vx: 0, vy: -BULLET_SPEED, petBullet: true });
-        playSound('shoot_homing');
-      }
-    }
-    // turtle: 被ダメージ軽減 (onPlayerHit側で処理)
-    // coin: プレイヤー周辺のコインパワーアップを自動取得 (addCoins内でboostで対応)
-    // bomber: 480フレーム毎に爆弾投下
-    if (def.effect === 'bomber') {
-      game.petTimers.bomber = (game.petTimers.bomber || 0) + 1;
-      if (game.petTimers.bomber >= pp.intervalFrames) {
-        game.petTimers.bomber = 0;
-        const cands = [...invaders.filter(i => i.alive), ...(game.boss ? [game.boss] : [])];
-        const tgt = cands.length > 0 ? cands[Math.floor(Math.random() * cands.length)] : null;
-        const tx = tgt ? tgt.x + tgt.w / 2 : game.player.x + (Math.random() - 0.5) * 200;
-        const ty = tgt ? tgt.y : 100;
-        const cx = game.player.x + game.player.w / 2;
-        const dist = Math.sqrt((tx - cx) ** 2 + (ty - game.player.y) ** 2) || 1;
-        game.bullets.push({
-          x: cx - 5, y: game.player.y - 10, w: 10, h: 10, explosive: true, bspd: 7,
-          vx: (tx - cx) / dist * 7, vy: (ty - game.player.y) / dist * 7, petBullet: true
-        });
-        playSound('shoot_expl');
-      }
-    }
-    // ghost: 600フレーム毎に1秒無敵
-    if (def.effect === 'ghost') {
-      game.petTimers.ghost = (game.petTimers.ghost || 0) + 1;
-      if (game.petTimers.ghost >= pp.intervalFrames) {
-        game.petTimers.ghost = 0;
-        game.player.invincibleTimer = Math.max(game.player.invincibleTimer || 0, (pp.durationFrames || 70));
-        triggerFlash(180, 180, 255, 0.25);
-        game.lifeGainDisplay = { text: 'GHOST: 無敵発動!', timer: 90, color: '#aaaaff' };
-      }
-    }
-    // fenrir (LR): 180フレーム毎に8方向全弾幕
-    if (def.effect === 'fenrir') {
-      game.petTimers.fenrir = (game.petTimers.fenrir || 0) + 1;
-      if (game.petTimers.fenrir >= pp.intervalFrames) {
-        game.petTimers.fenrir = 0;
-        const cx = game.player.x + game.player.w / 2, cy = game.player.y + game.player.h / 2;
-        for (let d = 0; d < 8; d++) {
-          const a = (d / 8) * Math.PI * 2;
-          game.bullets.push({ x: cx - 4, y: cy - 4, w: 8, h: 8, vx: Math.cos(a) * (BULLET_SPEED + 3), vy: Math.sin(a) * (BULLET_SPEED + 3), bspd: BULLET_SPEED + 3, petBullet: true });
-        }
-        triggerFlash(255, 34, 102, 0.2);
-        playSound('shoot_expl');
-      }
-    }
-  }
-  // valkyrie (LR): HP0になった時に一度だけ復活 (onPlayerHit側で処理)
-}
-
 // ===== イベント =====
 function tryTriggerEvent() {
   if (game.currentEvent || game.bossPhase) return;
@@ -2175,110 +1350,7 @@ function explodeBomb(cx, cy) {
   }
 }
 
-// ===== プレイヤー被弾 =====
-function checkPlayerHit() {
-  if (game.powerupActive === 'invincible' || game.player.invincibleTimer > 0) return;
-  for (let i = game.invaderBullets.length - 1; i >= 0; i--) {
-    if (rectsOverlap(game.invaderBullets[i], game.player)) {
-      const _rb = game.invaderBullets[i];
-      game.invaderBullets.splice(i, 1);
-      if (isMilestoneComplete('t3_reflect')) {
-        const _rv = Math.abs(_rb.vy || 4) * 1.3;
-        game.bullets.push({
-          x: _rb.x, y: _rb.y, w: _rb.w || 6, h: _rb.h || 6,
-          vx: -(_rb.vx || 0), vy: -_rv, bspd: _rv, reflected: true
-        });
-      }
-      if (game.playerShield || (game.chaosBuff?.type === 'shield' && (game.chaosBuff.timer || 0) > 0)) { absorbWithShield(); return; }
-      onPlayerHit(); return;
-    }
-  }
-  for (const inv of game.invaders.filter(i => i.alive)) {
-    if (rectsOverlap(inv, game.player)) {
-      inv.alive = false;
-      if (game.playerShield || (game.chaosBuff?.type === 'shield' && (game.chaosBuff.timer || 0) > 0)) { absorbWithShield(); return; }
-      onPlayerHit(); return;
-    }
-  }
-}
 
-function fireCounterShot() {
-  if (!game.player) return;
-  const cx = game.player.x + game.player.w / 2, cy = game.player.y + game.player.h / 2;
-  for (let a = -30; a <= 30; a += 30) {
-    const rad = (-Math.PI / 2) + (a * Math.PI / 180);
-    game.bullets.push({ x: cx - 3, y: cy, w: 6, h: 12, vx: Math.cos(rad) * (BULLET_SPEED + 2), vy: Math.sin(rad) * (BULLET_SPEED + 2), bspd: BULLET_SPEED + 2, petBullet: true });
-  }
-  playSound('shoot');
-}
-
-function absorbWithShield() {
-  game.playerShield = false; triggerFlash(50, 150, 255, 0.4); triggerShake(6, 8);
-  game.lifeGainDisplay = { text: 'SHIELD BREAK', timer: 90, color: '#4af' };
-  spawnExplosion(game.player.x + game.player.w / 2, game.player.y + game.player.h / 2, '#4af', 16);
-  game.player.invincibleTimer = 60; playSound('powerup');
-  if (game.gachaInventory['passive_shield_burst']?.level >= 1) {
-    const cx = game.player.x + game.player.w / 2, cy = game.player.y + game.player.h / 2;
-    for (let a = 0; a < 360; a += 45) {
-      const rad = a * Math.PI / 180;
-      game.bullets.push({ x: cx - 3, y: cy, w: 8, h: 8, vx: Math.cos(rad) * 6, vy: Math.sin(rad) * 6, bspd: 6, explosive: true, petBullet: true });
-    }
-    game.lifeGainDisplay = { text: 'SHIELD BURST!', timer: 90, color: '#ffdd00' };
-    playSound('shoot_expl');
-  }
-}
-
-function onPlayerHit() {
-  game.stageStats.hits++;
-  addUltimateGauge(12);
-  const turtleMod = getPetEffect('turtle') ? 0.85 : 1;
-  const _arm1Red = (game.shopUpgrades?.arm1 || 0) * 2;
-  const dmg = Math.max(1, Math.floor(25 * (1 - game.playerStats.def / 100) * turtleMod) - _arm1Red);
-  game.playerStats.hp = Math.max(0, game.playerStats.hp - dmg);
-  // arm3: スパイクアーマー（被弾時に近接敵へ反射ダメージ）
-  if ((game.shopUpgrades?.arm3 || 0) >= 1) {
-    const _spikeDmg = Math.max(1, Math.floor(dmg * (game.shopUpgrades.arm3 * 0.30)));
-    const _pcx = game.player.x + game.player.w / 2, _pcy = game.player.y + game.player.h / 2;
-    for (const inv of game.invaders) {
-      if (!inv.alive) continue;
-      const _dx = inv.x + inv.w / 2 - _pcx, _dy = inv.y + inv.h / 2 - _pcy;
-      if (Math.sqrt(_dx * _dx + _dy * _dy) < 100) {
-        inv.hp = Math.max(0, (inv.hp || 1) - _spikeDmg);
-        if (inv.hp <= 0) inv.alive = false;
-        spawnExplosion(inv.x + inv.w / 2, inv.y + inv.h / 2, '#ffaa44', 5);
-      }
-    }
-  }
-  // ペット: slime heal
-  if (getPetEffect('heal') && game.playerStats.hp > 0) game.playerStats.hp = Math.min(game.playerStats.maxHp, game.playerStats.hp + 15);
-  updateHUD();
-  spawnExplosion(game.player.x + game.player.w / 2, game.player.y + game.player.h / 2, '#0f0', 20);
-  triggerShake(12, 15); triggerFlash(255, 0, 0, 0.4); game.hitFlashTimer = 40;
-  playSound('player_hit'); vibrate([80, 30, 30]);
-  if (game.playerStats.hp <= 0) {
-    // valkyrie (LR): 一度だけHP60で復活
-    if (getPetEffect('valkyrie') && !game.player._valkyrieUsed) {
-      game.player._valkyrieUsed = true;
-      game.playerStats.hp = 60; updateHUD();
-      game.player.invincibleTimer = 180;
-      triggerFlash(255, 34, 102, 0.6);
-      game.lifeGainDisplay = { text: '★ VALKYRIE 復活!! HP60 ★', timer: 120, color: '#ff2266' };
-      return;
-    }
-    triggerGameOver(); return;
-  }
-  // phoenix: 30%以下で無敵
-  if (getPetEffect('phoenix') && game.playerStats.hp <= game.playerStats.maxHp * 0.3) {
-    game.player.invincibleTimer = Math.max(game.player.invincibleTimer, 120);
-    game.lifeGainDisplay = { text: 'PHOENIX  無敵発動！', timer: 90, color: '#f80' };
-  } else {
-    game.lifeGainDisplay = { text: `HP  -${dmg}  (${game.playerStats.hp}/${game.playerStats.maxHp})`, timer: 90, color: '#f44' };
-  }
-  game.player.invincibleTimer = Math.max(game.player.invincibleTimer, 120 + game.playerUpgrades.invincibleBonus);
-  if (game.gachaInventory['passive_counter']?.level >= 1) fireCounterShot();
-}
-
-function rectsOverlap(a, b) { return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
 
 function tryContinueFromGameOver() {
   if (game.state !== 'gameover') return false;
@@ -2352,7 +1424,20 @@ Object.assign(actions, {
   dropMaterial,
   addCombo,
   setTitleBgQuality,
-  isMilestoneComplete
+  isMilestoneComplete,
+  getPetEffect,
+  addUltimateGauge,
+  unlockAchievement,
+  genMapRoutes,
+  nextStage,
+  triggerShake,
+  triggerGameOver,
+  saveScore,
+  calcRank,
+  commitStageStarMedalForCurrentClear,
+  absorbWithShield,
+  onPlayerHit,
+  showMessage: (...args) => showMessage(...args),
 });
 
 // ===== 描画モジュールの依存関係設定 =====
