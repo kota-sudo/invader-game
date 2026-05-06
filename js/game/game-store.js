@@ -1,4 +1,6 @@
 import { SHOP_ITEMS } from '../game-data.js';
+import { readJsonObject } from './storage-helpers.js';
+import { applySaveSanityClamps } from './save-guard.js';
 
 export function readHiScores() {
   try {
@@ -34,6 +36,39 @@ export function setTitleBgQuality(mode) {
   game.titleBgQuality = mode;
   try {
     localStorage.setItem(STORAGE_TITLE_BG, mode);
+  } catch (e) {}
+}
+
+/** タイトル背景を画像で表示。相対URL推奨（例: ./assets/title-bg.png）。`off` / `none` / `0` で無効（手描き背景のみ） */
+const STORAGE_TITLE_BG_IMAGE = 'invader_title_bg_image';
+
+export function readTitleBackgroundImageSrc() {
+  try {
+    const v = localStorage.getItem(STORAGE_TITLE_BG_IMAGE);
+    if (v === '0' || v === 'off' || v === 'none') return '';
+    if (typeof v === 'string' && v.trim().length > 1) return v.trim();
+  } catch (e) {}
+  return './assets/title-bg.png';
+}
+
+/** 差し替え: 例 `setTitleBackgroundImageSrc('./assets/my-title.png')` */
+export function setTitleBackgroundImageSrc(src) {
+  const s = typeof src === 'string' ? src.trim() : '';
+  if (!s) return;
+  try {
+    localStorage.setItem(STORAGE_TITLE_BG_IMAGE, s);
+  } catch (e) {}
+}
+
+export function disableTitleBackgroundImage() {
+  try {
+    localStorage.setItem(STORAGE_TITLE_BG_IMAGE, 'off');
+  } catch (e) {}
+}
+
+export function enableDefaultTitleBackgroundImage() {
+  try {
+    localStorage.removeItem(STORAGE_TITLE_BG_IMAGE);
   } catch (e) {}
 }
 
@@ -85,6 +120,18 @@ export const game = {
   stageCharTX: 90,
   stageCharTY: 165,
   stageMapScrollOffset: 0,
+  /** 銀河マップで選択中の惑星 id（galaxy-data の GALAXY_PLANETS） */
+  galaxyMapSelectedPlanetId: 'mars',
+  /** 銀河マップ用トースト `{ msg, until: frameCount }` */
+  galaxyMapToast: null,
+  /** 銀河マップ上のモーダル: `null` | `'area'`（エリア情報） */
+  galaxyMapModal: null,
+  /** ミッション画面を閉じたあと: `null`（customize）| `'galaxy_map'` */
+  missionsReturnState: null,
+  /** ミッション画面タブ: `daily` | `track` | `milestones` */
+  missionsTab: 'daily',
+  /** ショップ／装備／ガチャを銀河マップのフッターから開いたとき、戻る先を銀河にする */
+  returnToGalaxyAfterOverlay: false,
   score: 0,
   lives: 3,
   stage: 1,
@@ -115,6 +162,12 @@ export const game = {
   maxInvaders: 8,
   stars: [],
   screenFlash: null,
+  /** タイトル画面：ボタン押下中のグロー／スケール演出 `{ id, until }`（frameCount 基準） */
+  titleBtnPressFx: null,
+  /** TAP ラベル付近にポインタがある（発光強化） */
+  titleTapHovered: false,
+  /** TAP 確定時のリング拡張など（frameCount まで） */
+  titleTapFeedbackUntil: 0,
   bossWarningTimer: 0,
   hitFlashTimer: 0,
   muzzleFlashes: [],
@@ -156,6 +209,10 @@ export const game = {
   playerStats: { hp: 100, maxHp: 100, atk: 1.0, def: 0, crit: 5, spd: 0 },
   loadoutTab: 0,
   loadoutCursor: 0,
+  charRarityFilter: 'all',
+  loadoutPresets: (() => { try { const v = JSON.parse(localStorage.getItem('invader_loadout_presets') || '[]'); return Array.isArray(v) ? v : []; } catch(_) { return []; } })(),
+  loadoutLongPressOverlay: null,
+  loadoutSummaryVisible: true,
   // 装備タブのフィルタ/ソート（所持数増加に備えて）
   equipFilterSlot: 'all', // all | atk | def | sp
   equipFilterRarity: 'ALL', // ALL | LR | SSR | SR | R | N
@@ -168,11 +225,10 @@ export const game = {
   endlessModeActive: false,
   selectedBossAbility: null,
   bossSelectCursor: 0,
-  bossKillsByType: JSON.parse(localStorage.getItem('invader_boss_kills_type') || '{}'),
-  bossBestScoreByType: JSON.parse(localStorage.getItem('invader_boss_best_score') || '{}'),
-  bossBestRankByType: JSON.parse(localStorage.getItem('invader_boss_best_rank') || '{}'),
+  bossKillsByType: readJsonObject('invader_boss_kills_type', {}),
+  bossBestScoreByType: readJsonObject('invader_boss_best_score', {}),
+  bossBestRankByType: readJsonObject('invader_boss_best_rank', {}),
   bossDifficulty: 1,
-  fusionCursor: 0,
   petLevelUpOverlay: null,
   stardustShopCursor: 0,
   achievements: readStoredObject('invader_achievements', '{}'),
@@ -207,6 +263,8 @@ export const game = {
   waveTargetKills: 0,
   waveDelay: 0,
   waveBannerTimer: 0,
+  /** 火星ウェーブプリセット: MID_BOSS が生存中はウェーブ完了にしない */
+  marsWaveAwaitMiniBossClear: false,
   sessionMissions: [],
   sessionProgress: {
     kills: 0,
@@ -233,7 +291,11 @@ export const game = {
   questProfileLoaded: false,
   activeMissions: [],
   recentMissionIds: [],
-  materials: readStoredObject('invader_materials', '{"scrap":0,"core":0,"crystal":0,"composite":0}'),
+  materials: readStoredObject('invader_materials', '{"scrap":0,"core":0,"crystal":0,"composite":0,"fusionStone":0,"starCrystal":0}'),
+  equipStars: readStoredObject('invader_equip_stars', '{}'),
+  synthCursor: 0,
+  fusionCursor: 0,
+  fusionScrollY: 0,
   shopUpgrades: readStoredObject('invader_shop', '{}'),
   shopCursor: 0,
   /** UPGRADEツリーで未解放ノードをタップしたときのフォーカス（null=通常の強化カード） */
@@ -256,6 +318,8 @@ export const game = {
   shipWeaponIdx: 0,
   titleWarpTimer: 0,
   // タイトルの「つきまわり」用（マウス追従）
+  /** 直近の `drawTitle` で背景画像が実際に描けたか（ヒット領域と `deck` UI を同期） */
+  titleBgImageActive: false,
   titlePointerX: 0,
   titlePointerY: 0,
   titleMoonFX: 0,
@@ -265,6 +329,8 @@ export const game = {
   titleBattleTimer: 0,
   titleBattleCooldown: 0,
   titleBgQuality: readTitleBgQuality(),
+  /** 設定画面を閉じたあと戻る画面: `'title'` | `'customize'` | `'galaxy_map'`（未設定時は customize） */
+  settingsReturnState: null,
   /** コンティニュー（💎）使用後〜次のクリア確定まで、そのクリアの★更新をスキップ */
   continueNoStarsThisRun: false,
   /** ローカル表示名（ランキング・週次用。サーバなし） */
@@ -298,3 +364,5 @@ game.playerLoadout._equipSlot = Math.max(0, Math.min(2, game.playerLoadout._equi
 SHOP_ITEMS.forEach(s => {
   if (game.shopUpgrades[s.id] === undefined) game.shopUpgrades[s.id] = 0;
 });
+
+applySaveSanityClamps(game);

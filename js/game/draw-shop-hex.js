@@ -8,7 +8,7 @@ import { SHOP_ITEMS, SHOP_MAX_LV, UPGRADE_LV_COSTS } from '../game-data.js';
 const HEX_PX = 54;
 const ZOOM_MIN = 0.18;
 const ZOOM_MAX = 3.0;
-const PANEL_H = 180;
+const PANEL_H = 168;
 const CONTENT_TOP = 114; // below header/tabs
 
 const ROLE_COL = {
@@ -22,45 +22,45 @@ const SHOP_IDS = new Set(SHOP_ITEMS.map(it => it.id));
 
 // ── Node / Edge definitions ────────────────────────────────────
 const NODES = [
-  {id:'core', q:0,  r:0,  tier:0,role:'core', label:'CORE',         icon:'◈', sz:1.7},
+  {id:'core', q:0,  r:0,  tier:0,role:'core', label:'コア',         icon:'◈', sz:1.7},
   {id:'atk',  q:0,  r:-3, tier:1,role:'atk',  label:'攻撃',         icon:'✷', sz:1.15},
   {id:'def',  q:3,  r:-3, tier:1,role:'def',  label:'防御',         icon:'▣', sz:1.15},
   {id:'spd',  q:3,  r:0,  tier:1,role:'spd',  label:'機動',         icon:'≫', sz:1.15},
-  {id:'ene',  q:0,  r:3,  tier:1,role:'ene',  label:'ENE',          icon:'⚡', sz:1.15},
-  {id:'arm',  q:-3, r:3,  tier:1,role:'arm',  label:'装甲',         icon:'⬡', sz:1.15, mystery:true},
-  {id:'spc',  q:-3, r:0,  tier:1,role:'spc',  label:'特殊',         icon:'◆', sz:1.15, mystery:true},
+  {id:'ene',  q:0,  r:3,  tier:1,role:'ene',  label:'電撃',         icon:'⚡', sz:1.15},
+  {id:'arm',  q:-3, r:3,  tier:1,role:'arm',  label:'装甲',         icon:'⬡', sz:1.15},
+  {id:'spc',  q:-3, r:0,  tier:1,role:'spc',  label:'特殊',         icon:'◆', sz:1.15},
   // ATK fan
-  {id:'atk_burst', q:-1,r:-4, tier:2,role:'atk',label:'バースト',     icon:'✦', mystery:true},
+  {id:'atk_burst', q:-1,r:-4, tier:2,role:'atk',label:'バースト弾',   icon:'✦', desc:'数秒毎に自動全方位バースト射撃 (最大7-way)'},
   {id:'firerate',  q:0, r:-5, tier:2,role:'atk',label:'速射強化',     icon:'»'},
   {id:'critrate',  q:1, r:-5, tier:2,role:'atk',label:'照準AI',       icon:'◎'},
   // DEF fan
   {id:'maxhp',     q:4, r:-5, tier:2,role:'def',label:'装甲強化',     icon:'♥'},
   {id:'dashcd',    q:5, r:-5, tier:2,role:'def',label:'スラスターCD', icon:'⟳'},
-  {id:'def_regen', q:5, r:-4, tier:2,role:'def',label:'自動修復',     icon:'✚', mystery:true},
+  {id:'def_regen', q:5, r:-4, tier:2,role:'def',label:'自動修復',     icon:'✚', desc:'5秒毎にHP+1/Lv自動回復 (最大+10/5sec)'},
   // SPD fan
-  {id:'spd_boost', q:5, r:-1, tier:2,role:'spd',label:'加速ブースト', icon:'»»', mystery:true},
+  {id:'spd_boost', q:5, r:-1, tier:2,role:'spd',label:'加速ブースト', icon:'»»', desc:'ダッシュ速度+10%/Lv (最大+100%)'},
   {id:'speed',     q:5, r:0,  tier:2,role:'spd',label:'エンジン',     icon:'▶'},
-  {id:'spd_phase', q:4, r:1,  tier:2,role:'spd',label:'フェーズD',    icon:'◌', mystery:true},
+  {id:'spd_phase', q:4, r:1,  tier:2,role:'spd',label:'フェーズD',    icon:'◌', desc:'ダッシュ無敵+5F/Lv (最大+50F)'},
   // ENE fan
   {id:'bulletspd', q:1, r:4,  tier:2,role:'ene',label:'弾速強化',     icon:'→'},
-  {id:'ene_over',  q:0, r:5,  tier:2,role:'ene',label:'オーバーロード',icon:'⚡', mystery:true},
-  {id:'ene_chain', q:-1,r:5,  tier:2,role:'ene',label:'チェーンボルト',icon:'⌁', mystery:true},
-  // ARM fan (all mystery)
-  {id:'arm1',q:-5,r:4, tier:2,role:'arm',label:'???',icon:'?',mystery:true},
-  {id:'arm2',q:-5,r:5, tier:2,role:'arm',label:'???',icon:'?',mystery:true},
-  {id:'arm3',q:-4,r:5, tier:2,role:'arm',label:'???',icon:'?',mystery:true},
-  // SPC fan (all mystery)
-  {id:'spc1',q:-4,r:-1,tier:2,role:'spc',label:'???',icon:'?',mystery:true},
-  {id:'spc2',q:-5,r:0, tier:2,role:'spc',label:'???',icon:'?',mystery:true},
-  {id:'spc3',q:-5,r:1, tier:2,role:'spc',label:'???',icon:'?',mystery:true},
+  {id:'ene_over',  q:0, r:5,  tier:2,role:'ene',label:'オーバーロード',icon:'⚡', desc:'弾速+2/Lv + Lv1以上で貫通弾'},
+  {id:'ene_chain', q:-1,r:5,  tier:2,role:'ene',label:'チェーンボルト',icon:'⌁', desc:'撃墜時に周囲の敵へ電撃連鎖ダメージ'},
+  // ARM fan
+  {id:'arm1',q:-5,r:4, tier:2,role:'arm',label:'衝撃吸収', icon:'⬡', desc:'被弾ダメージ固定軽減 -2/Lv (最大-20)'},
+  {id:'arm2',q:-5,r:5, tier:2,role:'arm',label:'???',icon:'?',mystery:true,comingSoon:true},
+  {id:'arm3',q:-4,r:5, tier:2,role:'arm',label:'スパイク',  icon:'❖', desc:'被弾時に近接敵へ反射ダメージ (Lv×30%)'},
+  // SPC fan
+  {id:'spc1',q:-4,r:-1,tier:2,role:'spc',label:'スキャナー',icon:'◉', desc:'素材ドロップ率+4%/Lv (最大+40%)'},
+  {id:'spc2',q:-5,r:0, tier:2,role:'spc',label:'重力磁場',  icon:'○', desc:'コイン・素材を自動吸引 半径+20/Lv (最大+200)'},
+  {id:'spc3',q:-5,r:1, tier:2,role:'spc',label:'ラッキー',  icon:'★', desc:'コイン獲得+10%/Lv + 大型コインチャンス'},
   // Tier3 milestones
-  {id:'t3_overclock',q:0,  r:-7, tier:3,role:'atk',label:'OVERCLOCK', icon:'⚠', milestone:true,sz:1.3,mystery:true},
-  {id:'t3_reflect',  q:7,  r:-7, tier:3,role:'def',label:'REFLECT',   icon:'◫', milestone:true,sz:1.3,mystery:true},
-  {id:'t3_ghost',    q:7,  r:0,  tier:3,role:'spd',label:'GHOST FORM',icon:'◌', milestone:true,sz:1.3,mystery:true},
-  {id:'t3_nova',     q:0,  r:7,  tier:3,role:'ene',label:'NOVA BURST',icon:'★', milestone:true,sz:1.3,mystery:true},
-  {id:'t3_titan',    q:-7, r:7,  tier:3,role:'arm',label:'???',        icon:'?', milestone:true,sz:1.3,mystery:true},
-  {id:'t3_chaos',    q:-7, r:0,  tier:3,role:'spc',label:'???',        icon:'?', milestone:true,sz:1.3,mystery:true},
-  {id:'omega',q:0,r:-9,tier:4,role:'omega',label:'ΩMEGA',icon:'Ω',sz:2.0,mystery:true},
+  {id:'t3_overclock',q:0,  r:-7, tier:3,role:'atk',label:'超過駆動', icon:'⚡', milestone:true,sz:1.3, desc:'攻撃ブランチ全MAX: 攻撃力永続+20%'},
+  {id:'t3_reflect',  q:7,  r:-7, tier:3,role:'def',label:'迎撃反射', icon:'◫', milestone:true,sz:1.3, desc:'防御ブランチ全MAX: 被弾時に敵弾を1発反射'},
+  {id:'t3_ghost',    q:7,  r:0,  tier:3,role:'spd',label:'幻影形態', icon:'◌', milestone:true,sz:1.3, desc:'機動ブランチ全MAX: ダッシュ中に完全無敵'},
+  {id:'t3_nova',     q:0,  r:7,  tier:3,role:'ene',label:'新星爆発', icon:'★', milestone:true,sz:1.3, desc:'電撃ブランチ全MAX: 10秒毎に画面全体爆発'},
+  {id:'t3_titan',    q:-7, r:7,  tier:3,role:'arm',label:'???',       icon:'?', milestone:true,sz:1.3,mystery:true,comingSoon:true},
+  {id:'t3_chaos',    q:-7, r:0,  tier:3,role:'spc',label:'混沌機関', icon:'◆', milestone:true,sz:1.3, desc:'特殊ブランチ全MAX: 15秒毎にランダム効果発動'},
+  {id:'omega',q:0,r:-9,tier:4,role:'omega',label:'ΩMEGA',icon:'Ω',sz:2.0,mystery:true,planned:true, desc:'全マイルストーン解放ボーナス: 全ステータス+15% & 究極形態解放'},
 ];
 
 const EDGES = [
@@ -75,8 +75,8 @@ const EDGES = [
   ['maxhp','t3_reflect'],['dashcd','t3_reflect'],['def_regen','t3_reflect'],
   ['spd_boost','t3_ghost'],['speed','t3_ghost'],['spd_phase','t3_ghost'],
   ['bulletspd','t3_nova'],['ene_over','t3_nova'],['ene_chain','t3_nova'],
-  ['arm1','t3_titan'],['arm2','t3_titan'],
-  ['spc1','t3_chaos'],['spc2','t3_chaos'],
+  ['arm1','t3_titan'],['arm2','t3_titan'],['arm3','t3_titan'],
+  ['spc1','t3_chaos'],['spc2','t3_chaos'],['spc3','t3_chaos'],
   ['t3_overclock','omega'],['t3_reflect','omega'],['t3_ghost','omega'],
   ['t3_nova','omega'],['t3_titan','omega'],['t3_chaos','omega'],
 ];
@@ -157,7 +157,18 @@ const SHOP_PREREQS = {
   critrate: [{ id: 'firerate', lv: 2 }],
   maxhp:    [],
   dashcd:   [{ id: 'maxhp',   lv: 2 }],
+  def_regen:[{ id: 'maxhp',   lv: 3 }],
   bulletspd:[{ id: 'speed',   lv: 2 }],
+  ene_over: [{ id: 'bulletspd', lv: 2 }],
+  spd_boost: [{ id: 'speed',    lv: 2 }],
+  spd_phase: [{ id: 'spd_boost', lv: 1 }],
+  atk_burst: [{ id: 'firerate',  lv: 2 }],
+  ene_chain: [{ id: 'bulletspd', lv: 2 }],
+  arm1:      [{ id: 'maxhp',     lv: 3 }],
+  arm3:      [{ id: 'arm1',      lv: 2 }],
+  spc1:      [{ id: 'speed',     lv: 2 }],
+  spc2:      [{ id: 'spc1',      lv: 2 }],
+  spc3:      [{ id: 'spc2',      lv: 2 }],
 };
 
 function computeRequiredPath(id, game) {
@@ -174,10 +185,23 @@ function computeRequiredPath(id, game) {
   trace(id);
 }
 
+// ── Milestone branch completion map ───────────────────────────
+const _MILESTONE_BRANCHES = {
+  t3_overclock: ['firerate','critrate','atk_burst'],
+  t3_reflect:   ['maxhp','dashcd','def_regen'],
+  t3_ghost:     ['speed','spd_boost','spd_phase'],
+  t3_nova:      ['bulletspd','ene_over','ene_chain'],
+  t3_chaos:     ['spc1','spc2','spc3'],
+};
+
 // ── Game-state helpers ─────────────────────────────────────────
 function isUnlocked(id, game) {
   if (id === 'core') return true;
   if (SHOP_IDS.has(id)) return (game.shopUpgrades?.[id] || 0) >= 1;
+  // Milestone nodes: all parent branch nodes must be maxed
+  if (_MILESTONE_BRANCHES[id]) {
+    return _MILESTONE_BRANCHES[id].every(n => (game.shopUpgrades?.[n] || 0) >= SHOP_MAX_LV);
+  }
   // Category nodes: lit when at least one child SHOP item is upgraded
   const children = EDGES.filter(([a]) => a === id).map(([, b]) => b);
   return children.some(c => SHOP_IDS.has(c) && (game.shopUpgrades?.[c] || 0) >= 1);
@@ -516,20 +540,34 @@ function drawNode(ctx, n, W, H, frame, game) {
       ctx.fillStyle = `hsl(${hue},100%,78%)`; ctx.shadowColor = `hsl(${hue},100%,65%)`; ctx.shadowBlur = 18 * hexZoom;
     } else if (unlocked) {
       ctx.fillStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 9 * hexZoom;
-    } else if (n.mystery) {
+    } else if (n.mystery && !n.comingSoon) {
       ctx.fillStyle = `rgba(${rgb},0.13)`;
+    } else if (n.comingSoon && n.label !== '???') {
+      ctx.fillStyle = `rgba(${rgb},0.45)`;
     } else {
       ctx.fillStyle = `rgba(${rgb},0.38)`;
     }
-    if (!n.mystery) ctx.fillText(n.icon, sc.x, sc.y);
+    if (!n.mystery || (n.comingSoon && n.label !== '???')) ctx.fillText(n.icon, sc.x, sc.y);
     ctx.shadowBlur = 0;
   }
-  // lock (req nodes use higher alpha)
+  // lock / coming-soon badge
   if (!unlocked && hexZoom > 0.3) {
-    drawLock(ctx, sc.x, sc.y, (n.sz || 1) * 8.5 * hexZoom, n.mystery ? 0.14 : isReq ? 0.72 : 0.40);
+    if (n.comingSoon && n.label !== '???') {
+      if (hexZoom > 0.40) {
+        const ssz = Math.max(5, 5.5 * hexZoom);
+        ctx.save();
+        ctx.font = `700 ${ssz}px 'Orbitron','Courier New',monospace`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = `rgba(${rgb},0.52)`; ctx.shadowColor = col; ctx.shadowBlur = 6 * hexZoom;
+        ctx.fillText('SOON', sc.x, sc.y + r * 0.52);
+        ctx.shadowBlur = 0; ctx.restore();
+      }
+    } else {
+      drawLock(ctx, sc.x, sc.y, (n.sz || 1) * 8.5 * hexZoom, n.mystery ? 0.14 : isReq ? 0.72 : 0.40);
+    }
   }
   // label
-  if (hexZoom > 0.44 && !n.mystery) {
+  if (hexZoom > 0.44 && (!n.mystery || (n.comingSoon && n.label !== '???' ))) {
     const lsz = Math.max(6, 7 * hexZoom * (n.sz || 1));
     ctx.font = `700 ${lsz}px 'Orbitron','Courier New',monospace`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'top';
@@ -569,8 +607,25 @@ export function getShopHexNodeInfo(id) {
   return {
     role: n.role, label: n.label, icon: n.icon,
     tier: n.tier, mystery: n.mystery, milestone: n.milestone,
-    isShopItem: SHOP_IDS.has(id),
+    isShopItem: SHOP_IDS.has(id), comingSoon: !!n.comingSoon,
+    planned: !!n.planned, desc: n.desc || null,
   };
+}
+
+export function getShopHexMysteryHint(id) {
+  const n = nodeMap[id];
+  if (!n || !n.mystery) return null;
+  if (n.comingSoon) return '次のアップデートで実装予定';
+  if (n.desc) return n.desc;
+  const ROLE_JP = { atk: 'ATK攻撃', def: 'DEF防御', spd: 'SPD機動', ene: 'ENEエネルギー' };
+  if (n.id === 'omega') return 'すべてのマイルストーンを解放すると判明';
+  if (n.tier === 3) {
+    const parents = (parentMap[id] || []).slice(0, 2);
+    const pLabels = parents.map(pid => nodeMap[pid]?.label).filter(Boolean);
+    return pLabels.length ? `${pLabels.join(' / ')} 解放で判明` : '周囲のノードを強化すると判明';
+  }
+  if (n.tier === 2) return `${ROLE_JP[n.role] || n.role}ブランチを強化すると判明`;
+  return '周囲のノードを強化すると判明';
 }
 
 // ── Stars (static seed per session) ───────────────────────────
@@ -581,10 +636,12 @@ const STARS = Array.from({ length: 200 }, () => ({
 
 // ── Branch jump buttons (③) ────────────────────────────────────
 const BRANCH_BTNS = [
-  { id: 'atk', label: 'ATK', role: 'atk' },
-  { id: 'def', label: 'DEF', role: 'def' },
-  { id: 'spd', label: 'SPD', role: 'spd' },
-  { id: 'ene', label: 'ENE', role: 'ene' },
+  { id: 'atk', label: '攻撃', role: 'atk' },
+  { id: 'def', label: '防御', role: 'def' },
+  { id: 'spd', label: '機動', role: 'spd' },
+  { id: 'ene', label: '電撃', role: 'ene' },
+  { id: 'arm', label: '装甲', role: 'arm' },
+  { id: 'spc', label: '特殊', role: 'spc' },
 ];
 
 function drawBranchBtns(ctx, W, H, game, frame) {
@@ -612,7 +669,7 @@ function drawBranchBtns(ctx, W, H, game, frame) {
   });
 
   // Right side: Branch jump buttons
-  const bW = 46, bH = 22, gap = 6;
+  const bW = 40, bH = 22, gap = 5;
   const totalW = BRANCH_BTNS.length * bW + (BRANCH_BTNS.length - 1) * gap;
   const startX = W - totalW - 10;
   BRANCH_BTNS.forEach((b, i) => {

@@ -33,7 +33,7 @@ export function runUpdate() {
       // 画面表示演出（ライン描画/ノードフェード）用の開始フレーム
       if(!Number.isFinite(game.stageSelectEnterAt)) game.stageSelectEnterAt=game.frameCount;
       const followS=getStageSelectShipFollowStage(game.stageSelectIdx+1,game.highestStage);
-      const tpos=getStageSelectShipTarget(H,followS);
+      const tpos=getStageSelectShipTarget(H,followS,478,game.highestStage);
       if(tpos){
         game.stageCharTX=tpos.x;
         game.stageCharTY=tpos.y;
@@ -63,18 +63,20 @@ export function runUpdate() {
       if(game.titleWarpTimer===38) actions.playSound('warp');
       if(game.titleWarpTimer>=48){
         game.titleWarpTimer=0;
-        // ホーム（タイトル）からはまずステージ選択へ遷移する
-        //（ステージを選んだ後に出撃準備画面へ行く）
         game.customizeCursor=0;
-        const hs=Math.max(1,Number.isFinite(game.highestStage)?game.highestStage:1);
-        const maxIdx=Math.max(0,hs-1);
-        if(!Number.isFinite(game.stageSelectIdx)) game.stageSelectIdx=0;
-        game.stageSelectIdx=Math.max(0,Math.min(maxIdx,game.stageSelectIdx));
-        game.stageMapScrollOffset=Math.floor(game.stageSelectIdx/10)*270;
-        const followS=getStageSelectShipFollowStage(game.stageSelectIdx+1,game.highestStage);
-        const tpos=getStageSelectShipTarget(H,followS);
-        if(tpos){ game.stageCharX=tpos.x; game.stageCharY=tpos.y; game.stageCharTX=tpos.x; game.stageCharTY=tpos.y; }
-        game.state='stage_select';
+        game.state='galaxy_map';
+      }
+      game.frameCount++;
+      return;
+    }
+    if(game.state==='galaxy_map'){
+      for(const s of game.stars){
+        const lyr=s.layer;
+        const dy=s.speed*(0.2+lyr*0.22);
+        const dx=s.speed*(-0.38-lyr*0.32);
+        s.y+=dy; s.x+=dx; s.twinkle+=0.022+lyr*0.012;
+        if(s.y>H){s.y=-2;s.x=Math.random()*W;}
+        if(s.x<-14)s.x=W+14; else if(s.x>W+14)s.x=-14;
       }
       game.frameCount++;
       return;
@@ -100,6 +102,8 @@ export function runUpdate() {
           else if(s.x>W+14)s.x=-14;
         }
       }
+      if (game.titleBtnPressFx && game.frameCount > game.titleBtnPressFx.until) game.titleBtnPressFx = null;
+      if (game.titleTapFeedbackUntil && game.frameCount > game.titleTapFeedbackUntil) game.titleTapFeedbackUntil = 0;
       game.frameCount++;
       return;
     }
@@ -109,7 +113,11 @@ export function runUpdate() {
     }
     if(game.state!=='playing') return;
     game.frameCount++;
-  
+
+    for (const inv of game.invaders) {
+      if (inv.hitFlashTimer > 0) inv.hitFlashTimer--;
+    }
+
     for(const s of game.stars){
       s.y+=s.speed*(1+s.layer*0.4); s.twinkle+=0.04;
       if(s.y>H){s.y=-2;s.x=Math.random()*W;}
@@ -149,7 +157,8 @@ export function runUpdate() {
     }
   
     const _shSpd=SHIP_SHAPES[game.shipShapeIdx].id==='agile'?1:SHIP_SHAPES[game.shipShapeIdx].id==='heavy'?-1:0;
-    const pspd=PLAYER_SPEED_BASE+game.playerUpgrades.speed+_shSpd+game.playerStats.spd;
+    const _chaosSpdMult=(game.chaosBuff?.type==='speed'&&(game.chaosBuff.timer||0)>0)?1.5:1;
+    const pspd=(PLAYER_SPEED_BASE+game.playerUpgrades.speed+_shSpd+game.playerStats.spd)*_chaosSpdMult;
     if(game.dashTimer===0){
       if(keys['ArrowLeft']||keys['KeyA']) game.player.x=Math.max(0,game.player.x-pspd);
       if(keys['ArrowRight']||keys['KeyD']) game.player.x=Math.min(W-game.player.w,game.player.x+pspd);
@@ -239,12 +248,9 @@ export function runUpdate() {
         game.powerups.splice(i,1);
       }
     }
-  
-    // スキル選択中は敵・弾丸をフリーズ
-    if(game.skillChoices) return;
-  
     if(!game.bossPhase){actions.tryTriggerEvent();actions.updateEvent();}
     actions.updateMeteors(); actions.updateAsteroids();
+    actions.updateEnvGimmicks?.();
   
     // ボスフェーズ
     if(game.bossPhase){
@@ -266,10 +272,14 @@ export function runUpdate() {
       }
     }
   
-    // 護衛: 輸送船更新
-    if(game.stageType==='escort') actions.updateEscortShip();
     actions.updatePets();
     if(game.state!=='playing') return;
+
+    // 火星プリセットの MID_BOSS ウェーブ（ボスフェーズ外）でもミニボスを更新する
+    if(!game.bossPhase && game.miniBosses.some(m=>m.alive)){
+      actions.updateMiniBosses();
+      if(game.state!=='playing') return;
+    }
   
     // パッシブ効果
     if(game.gachaInventory['passive_regen']?.level>=1){
@@ -280,12 +290,79 @@ export function runUpdate() {
         actions.updateHUD();
       }
     }
-    if(game.playerUpgrades.magnet){
-      const px=game.player.x+game.player.w/2, py=game.player.y+game.player.h/2;
-      for(const p of game.powerups){
-        const dx=px-(p.x+p.w/2), dy=py-(p.y+p.h/2);
-        const dist=Math.sqrt(dx*dx+dy*dy)||1;
-        if(dist<180){p.x+=dx/dist*4; p.y+=dy/dist*4;}
+    if((game.shopUpgrades?.def_regen||0)>=1){
+      game.defRegenTimer=(game.defRegenTimer||0)+1;
+      if(game.defRegenTimer>=300){
+        game.defRegenTimer=0;
+        game.playerStats.hp=Math.min(game.playerStats.maxHp,game.playerStats.hp+(game.shopUpgrades.def_regen));
+        actions.updateHUD();
+      }
+    }
+    // auto-burst (atk_burst)
+    if((game.shopUpgrades?.atk_burst||0)>=1&&game.playerStats.hp>0){
+      const _lvAB=game.shopUpgrades.atk_burst;
+      game.autoburstTimer=(game.autoburstTimer||0)+1;
+      const _ivAB=Math.max(90,300-(_lvAB-1)*22);
+      if(game.autoburstTimer>=_ivAB){
+        game.autoburstTimer=0;
+        const _cx=game.player.x+game.player.w/2, _cy=game.player.y+game.player.h/2;
+        const _bspd=(BULLET_SPEED+(game.playerUpgrades?.bulletSpd||0))*0.9;
+        const _nAB=2+Math.ceil(_lvAB/2);
+        for(let _ab=0;_ab<_nAB;_ab++){
+          const _ang=(_ab/_nAB)*Math.PI*2-Math.PI/2;
+          game.bullets.push({x:_cx-2,y:_cy-2,w:4,h:4,vx:Math.sin(_ang)*_bspd,vy:-Math.cos(_ang)*_bspd,bspd:_bspd,autoburst:true});
+        }
+        actions.playSound('shoot');
+      }
+    }
+    // t3_ghost: ダッシュ中は無敵持続
+    if(actions.isMilestoneComplete('t3_ghost')&&(game.dashTimer||0)>0){
+      game.invincibleTimer=Math.max(game.invincibleTimer||0,1);
+    }
+    // t3_nova: 10秒毎に全画面爆発
+    if(actions.isMilestoneComplete('t3_nova')&&game.playerStats.hp>0){
+      game.novaTimer=(game.novaTimer||0)+1;
+      if(game.novaTimer>=600){
+        game.novaTimer=0;
+        const _novaDmg=Math.round(actions.calcPlayerDmg(40));
+        for(const inv of game.invaders){
+          if(!inv.alive)continue;
+          inv.hp-=_novaDmg;
+          if(inv.hp<=0){inv.alive=false; actions.spawnExplosion(inv.x+inv.w/2,inv.y+inv.h/2,'#88aaff',6);}
+        }
+        actions.spawnExplosion(game.player.x+game.player.w/2,game.player.y+game.player.h/2,'#aaccff',12);
+        actions.triggerFlash('#4466ff',8);
+      }
+    }
+    // t3_chaos: 15秒毎にランダム効果
+    if(actions.isMilestoneComplete('t3_chaos')&&game.playerStats.hp>0){
+      game.chaosTimer=(game.chaosTimer||0)+1;
+      if(game.chaosTimer>=900){
+        game.chaosTimer=0;
+        const _eff=['atk2x','heal','shield','speed'][Math.floor(Math.random()*4)];
+        if(_eff==='atk2x') game.chaosBuff={type:'atk2x',timer:300};
+        else if(_eff==='heal'){game.playerStats.hp=Math.min(game.playerStats.maxHp,game.playerStats.hp+Math.round(game.playerStats.maxHp*0.30));actions.updateHUD();}
+        else if(_eff==='shield') game.chaosBuff={type:'shield',timer:300};
+        else if(_eff==='speed') game.chaosBuff={type:'speed',timer:300};
+      }
+      if(game.chaosBuff&&(game.chaosBuff.timer||0)>0){
+        game.chaosBuff.timer--;
+        if(game.chaosBuff.timer<=0) game.chaosBuff=null;
+      }
+    }
+    // magnet (loadout) + spc2 shop magnet
+    {
+      const _spc2Lv=game.shopUpgrades?.spc2||0;
+      const _magR=game.playerUpgrades.magnet?180:0;
+      const _spc2R=_spc2Lv>0?60+_spc2Lv*20:0;
+      const _mRange=Math.max(_magR,_spc2R);
+      if(_mRange>0){
+        const px=game.player.x+game.player.w/2, py=game.player.y+game.player.h/2;
+        for(const p of game.powerups){
+          const dx=px-(p.x+p.w/2), dy=py-(p.y+p.h/2);
+          const dist=Math.sqrt(dx*dx+dy*dy)||1;
+          if(dist<_mRange){p.x+=dx/dist*4; p.y+=dy/dist*4;}
+        }
       }
     }
   
@@ -295,15 +372,18 @@ export function runUpdate() {
       if(game.formationTimer<=0){game.formationTimer=Math.max(300,600-game.stage*30);actions.spawnFormation();}
     }
   
-    // ウェーブシステム (通常・護衛ステージ)
-    if(!game.bossPhase&&(game.stageType==='normal'||game.stageType==='escort'||game.stageType==='endless')){
+    // ウェーブシステム (通常・無尽)
+    if(!game.bossPhase&&(game.stageType==='normal'||game.stageType==='endless')&&!(game.stageClearAnimTimer>0)){
       if(game.waveBannerTimer>0) game.waveBannerTimer--;
       const aliveCount=game.invaders.filter(i=>i.alive).length;
+      const miniPending=!!game.marsWaveAwaitMiniBossClear && game.miniBosses.some(m=>m.alive);
       if(game.waveState==='active'){
-        if(aliveCount===0){
+        if(aliveCount===0 && !miniPending){
           const maxWave=actions.getWaveCount();
           if(game.waveNum>=maxWave){
-            game.invaderBullets=[]; game.bossPhase=true; actions.spawnBoss();
+            if(actions.shouldSpawnBossAfterWavesClear()){
+              game.invaderBullets=[]; game.bossPhase=true; actions.spawnBoss();
+            }
           } else {
             game.waveState='wait'; game.waveDelay=WAVE_CLEAR_DELAY;
           }
@@ -413,19 +493,23 @@ export function runUpdate() {
         const rawDmg=game.bullets[i].charged?3:1;
         const {val:dmg,isCrit:ic}=game.bullets[i].laser?{val:rawDmg,isCrit:false}:actions.calcPlayerDmg(rawDmg);
         if(game.bullets[i].laser){
+          inv.hitFlashTimer = 8;
           inv.alive=false; actions.spawnDmgNum(inv.x+inv.w/2,inv.y,dmg,ic);
         } else if(game.bullets[i].charged){
-          inv.hp=Math.max(0,inv.hp-dmg); actions.spawnDmgNum(inv.x+inv.w/2,inv.y,dmg,ic); if(inv.hp<=0) inv.alive=false;
+          inv.hp=Math.max(0,inv.hp-dmg); inv.hitFlashTimer = 8; actions.spawnDmgNum(inv.x+inv.w/2,inv.y,dmg,ic); if(inv.hp<=0) inv.alive=false;
           game.bullets[i].piercesLeft=(game.bullets[i].piercesLeft||1)-1;
           if(game.bullets[i].piercesLeft<=0){game.bullets.splice(i,1);j--;}
         } else {
           inv.hp=Math.max(0,(inv.hp||1)-dmg);
+          inv.hitFlashTimer = 8;
           actions.spawnDmgNum(inv.x+inv.w/2,inv.y,dmg,ic);
           if(inv.hp>0){
             actions.spawnExplosion(inv.x+inv.w/2,inv.y+inv.h/2,'#888',3);
-            game.bullets.splice(i,1); continue outer;
+            if((game.bullets[i]?.piercesLeft||0)>0){game.bullets[i].piercesLeft--;}
+            else{game.bullets.splice(i,1); continue outer;}
+          } else {
+            inv.alive=false;
           }
-          inv.alive=false;
         }
         if(!inv.alive){
           const typeBonus={normal:1,fast:1.5,tank:3,sniper:2,bomber:2}[inv.invType]||1;
@@ -439,8 +523,27 @@ export function runUpdate() {
           actions.addExp(inv.invType==='tank'?30:inv.invType==='sniper'?20:10); actions.playSound('explosion'); actions.vibrate(15);
           if(Math.random()<0.35) actions.addCoins(inv.invType==='tank'?6:inv.invType==='sniper'?5:3+Math.floor(Math.random()*3));
           actions.dropMaterial();
+          // ene_chain: 電撃連鎖
+          if((game.shopUpgrades?.ene_chain||0)>=1){
+            const _lvEC=game.shopUpgrades.ene_chain;
+            const _chainR=70+_lvEC*8, _maxC=Math.ceil(_lvEC/2);
+            const _ix=inv.x+inv.w/2,_iy=inv.y+inv.h/2;
+            let _cc=0;
+            for(const _oth of game.invaders){
+              if(!_oth.alive||_oth===inv) continue;
+              const _ddx=(_oth.x+_oth.w/2)-_ix,_ddy=(_oth.y+_oth.h/2)-_iy;
+              if(Math.sqrt(_ddx*_ddx+_ddy*_ddy)<=_chainR&&_cc<_maxC){
+                const _cdmg=Math.max(1,Math.floor((game.playerUpgrades?.damage||1)*(0.3+_lvEC*0.05)));
+                _oth.hp=Math.max(0,(_oth.hp||1)-_cdmg);
+                _oth.hitFlashTimer = 8;
+                if(_oth.hp<=0) _oth.alive=false;
+                actions.spawnExplosion(_oth.x+_oth.w/2,_oth.y+_oth.h/2,'#55ffee',4);
+                _cc++;
+              }
+            }
+          }
         }
-        if(!game.bullets[i]?.laser&&!(game.bullets[i]?.charged&&game.bullets[i]?.piercesLeft>0)){game.bullets.splice(i,1);continue outer;}
+        if(!game.bullets[i]?.laser&&!((game.bullets[i]?.piercesLeft||0)>0)){game.bullets.splice(i,1);continue outer;}
       }
       if(game.bullets[i]?.explosive){
         const b=game.bullets[i];

@@ -1,8 +1,60 @@
+import { syncStageSelectOverlay } from '../ui/stage-select-overlay.js';
+import { syncGalaxyMapOverlay } from '../ui/galaxy-map-overlay.js';
+
 /**
  * Main draw router (state → scene). All draw helpers stay on main; passed via `d`.
  * @param {object} d
  */
 export function paintFrame(d) {
+  if (!d?.ctx?.save || typeof d.ctx.fillRect !== 'function') return;
+  try {
+    paintFrameBody(d);
+  } catch (err) {
+    console.error('paintFrame', err);
+    drawPaintFrameFallback(d, err);
+  }
+}
+
+function drawPaintFrameFallback(d, e) {
+  try {
+    const ctx = d.ctx;
+    const W = Number(d.W) || 800;
+    const H = Number(d.H) || 600;
+    const canvas = ctx.canvas;
+    if (canvas && typeof canvas.width === 'number') canvas.width = canvas.width;
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#140814';
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = '#ff4466';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(12, 12, Math.max(0, W - 24), Math.max(0, H - 24));
+    ctx.fillStyle = '#ff99aa';
+    ctx.font = 'bold 14px Orbitron,Courier New,sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('DRAW ERROR — Open console (F12)', 22, 40);
+    ctx.fillStyle = '#ddeeff';
+    ctx.font = '11px monospace';
+    const msg = String((e && e.message) || e || '').slice(0, 400);
+    for (let i = 0, y = 62; i < msg.length && y < H - 16; i += 72, y += 14) {
+      ctx.fillText(msg.slice(i, i + 72), 22, y);
+    }
+    ctx.restore();
+  } catch (_) {}
+}
+
+function paintFrameBody(d) {
+  const canvasEl = typeof document !== 'undefined' ? document.getElementById('canvas') : null;
+  if (canvasEl) {
+    try {
+      syncStageSelectOverlay(canvasEl);
+      syncGalaxyMapOverlay(canvasEl);
+    } catch (e) {
+      console.error('paintFrame overlay sync', e);
+    }
+  }
+
   const theme = d.getTheme();
   d.ctx.save();
   if (d.shakeTimer > 0 && d.state === 'playing') {
@@ -20,15 +72,32 @@ export function paintFrame(d) {
   if (hudEl) hudEl.style.display = showHUD ? 'flex' : 'none';
 
   if (d.state === 'title') {
-    d.drawStarfield();
+    const g = d.ctx.createLinearGradient(0, 0, 0, d.H);
+    g.addColorStop(0, '#0c0406');
+    g.addColorStop(0.42, '#120608');
+    g.addColorStop(0.78, '#14060a');
+    g.addColorStop(1, '#080204');
+    d.ctx.fillStyle = g;
+    d.ctx.fillRect(-20, -20, d.W + 40, d.H + 40);
     d.drawTitle();
     d.drawVignette();
+    d.drawTitleTermBezel();
+    d.drawUIButtons();
+    d.drawScreenFlash();
     d.ctx.restore();
     return;
   }
   if (d.state === 'title_warp') {
     d.drawStarfield();
     d.drawTitleWarp();
+    d.drawVignette();
+    d.ctx.restore();
+    return;
+  }
+  if (d.state === 'galaxy_map') {
+    d.ctx.fillStyle = '#04060e';
+    d.ctx.fillRect(-20, -20, d.W + 40, d.H + 40);
+    d.drawStarfield();
     d.drawVignette();
     d.ctx.restore();
     return;
@@ -53,9 +122,8 @@ export function paintFrame(d) {
     return;
   }
   if (d.state === 'stage_select') {
-    d.drawStarfield();
-    d.drawVignette();
-    d.drawStageSelectScreen();
+    d.ctx.fillStyle = '#07090d';
+    d.ctx.fillRect(-20, -20, d.W + 40, d.H + 40);
     d.drawUIButtons();
     d.ctx.restore();
     return;
@@ -186,48 +254,75 @@ export function paintFrame(d) {
     d.ctx.restore();
     return;
   }
+  if (d.state === 'synthesis') {
+    d.drawStarfield();
+    d.drawVignette();
+    d.drawSynthesisScreen();
+    d.drawUIButtons();
+    d.ctx.restore();
+    return;
+  }
+  if (d.state === 'fusion') {
+    d.drawStarfield();
+    d.drawVignette();
+    d.drawFusionScreen();
+    d.drawUIButtons();
+    d.ctx.restore();
+    return;
+  }
 
-  d.drawStarfield();
-  d.ctx.fillStyle = theme.nebula;
-  d.ctx.fillRect(0, 0, d.W, d.H);
+  try {
+    const drewBattleBackdrop =
+      typeof d.drawBattleBackground === 'function' ? d.drawBattleBackground() : false;
+    d.drawStarfield();
+    d.ctx.fillStyle = theme.nebula;
+    if (drewBattleBackdrop) {
+      d.ctx.globalAlpha = 0.32;
+      d.ctx.fillRect(0, 0, d.W, d.H);
+      d.ctx.globalAlpha = 1;
+    } else {
+      d.ctx.fillRect(0, 0, d.W, d.H);
+    }
 
-  d.drawAsteroids();
-  d.drawMeteors();
-  if (d.escortShip) d.drawEscortShip();
-  d.drawDashTrail();
-  d.drawInvaders();
-  d.drawHealers();
-  if (d.boss) d.drawBoss();
-  d.drawMiniBosses();
-  d.drawBossMinions();
-  if (d.ufo) d.drawUFO();
-  d.drawPowerups();
-  d.drawPlayer();
-  d.drawPets();
-  d.drawBullets();
-  d.drawMuzzleFlashes();
-  d.drawParticles();
-  d.updateDamageNumbers();
-  d.drawDamageNumbers();
-  d.drawGroundLine(theme.ground);
-  d.drawHUD(theme.accent);
-  d.drawBossWarning(theme);
-  d.drawSurvivalTimer();
-  d.drawStageBanner(theme.accent);
-  d.drawWaveBanner();
-  d.drawLifeGainDisplay();
-  d.drawLevelUpDisplay();
-  if (d.skillChoices) d.drawSkillChoice();
-  d.drawEventBanner();
-  d.drawMatPopups();
-  if (d.stageClearAnimTimer > 0) d.drawStageClearAnim();
-  d.drawJoystick();
-  d.drawHitFlash();
-  d.drawScreenFlash();
-  d.drawVignette();
-  d.drawCriticalVignette();
-  d.drawScanlines();
-  if (d.paused) d.drawPauseOverlay();
-  if (d.state === 'gameover') d.drawGameOverOverlay();
-  d.ctx.restore();
+    d.drawAsteroids();
+    d.drawMeteors();
+    if (d.drawEnvGimmicks) d.drawEnvGimmicks();
+    d.drawDashTrail();
+    d.drawInvaders();
+    d.drawHealers();
+    if (d.boss) d.drawBoss();
+    d.drawMiniBosses();
+    d.drawBossMinions();
+    if (d.ufo) d.drawUFO();
+    d.drawPowerups();
+    d.drawPlayer();
+    d.drawPets();
+    d.drawBullets();
+    d.drawMuzzleFlashes();
+    d.drawParticles();
+    d.updateDamageNumbers();
+    d.drawDamageNumbers();
+    d.drawGroundLine(theme.ground);
+    d.drawHUD(theme.accent);
+    d.drawBossWarning(theme);
+    d.drawSurvivalTimer();
+    d.drawStageBanner(theme.accent);
+    d.drawWaveBanner();
+    d.drawLifeGainDisplay();
+    d.drawLevelUpDisplay();
+    d.drawEventBanner();
+    d.drawMatPopups();
+    if (d.stageClearAnimTimer > 0) d.drawStageClearAnim();
+    d.drawJoystick();
+    d.drawHitFlash();
+    d.drawScreenFlash();
+    d.drawVignette();
+    d.drawCriticalVignette();
+    d.drawScanlines();
+    if (d.paused) d.drawPauseOverlay();
+    if (d.state === 'gameover') d.drawGameOverOverlay();
+  } finally {
+    d.ctx.restore();
+  }
 }
+

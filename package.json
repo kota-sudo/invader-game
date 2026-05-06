@@ -2,8 +2,19 @@
   "name": "invader-game",
   "private": true,
   "type": "module",
+  "scripts": {
+    "test": "node --test test/",
+    "dev": "npx --yes serve@14 . -p 8080",
+    "icons": "node scripts/gen-png-icons.mjs",
+    "build:js": "esbuild main.js --bundle --minify --outfile=dist/main.bundle.js --format=esm --platform=browser --sourcemap",
+    "build": "npm run icons && npm run build:js && node scripts/copy-dist-html.mjs",
+    "preview": "npx --yes serve@14 dist -p 4173"
+  },
   "devDependencies": {
     "acorn": "^8.14.0",
-    "acorn-walk": "^8.3.4"
+    "acorn-walk": "^8.3.4",
+    "esbuild": "^0.28.0",
+    "jpeg-js": "^0.4.4",
+    "pngjs": "^7.0.0"
   }
 }

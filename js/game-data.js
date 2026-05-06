@@ -16,6 +16,46 @@ export function getPlanet(s){
   if(s<=30) return PLANET_DEFS[2];
   return PLANET_DEFS[3];
 }
+
+/** 火星ステージ選択マップ左パネル（サイトルートからの相対パス） */
+export const MARS_STAGE_MAP_BG = './assets/stages/mars/mars-stage-map-bg.png';
+
+/**
+ * 火星エリア（ワールド内ローカル 1〜10）の戦闘背景。
+ * グローバルステージ番号 1〜10 のみ火星。
+ */
+/** 戦闘出現テーブルは main.js の pickInvaderType（MARS 分岐）と対応 */
+export const MARS_BATTLE_BACKGROUNDS = {
+  1: './assets/stages/mars/mars-battle-bg-01-red-desert.png',
+  2: './assets/stages/mars/mars-battle-bg-01-red-desert.png',
+  3: './assets/stages/mars/mars-battle-bg-02-outpost.png',
+  4: './assets/stages/mars/mars-battle-bg-02-outpost.png',
+  5: './assets/stages/mars/mars-battle-bg-03-mining-base.png',
+  6: './assets/stages/mars/mars-battle-bg-04-core-lab.png',
+  7: './assets/stages/mars/mars-battle-bg-04-core-lab.png',
+  8: './assets/stages/mars/mars-battle-bg-04-core-lab.png',
+  9: './assets/stages/mars/mars-battle-bg-04-core-lab.png',
+  10: './assets/stages/mars/mars-battle-bg-04-core-lab.png',
+};
+
+/** 戦闘画面用。火星以外や未定義は空文字（グラデのみ）。 */
+export function getStageBattleBackground(stageNum) {
+  const s = Math.max(1, Math.floor(stageNum || 1));
+  if (getPlanet(s).name !== 'MARS') return '';
+  const local = ((s - 1) % 10) + 1;
+  return MARS_BATTLE_BACKGROUNDS[local] || '';
+}
+
+/** ステージメタ（現状は戦闘背景パスのみ。41以降はプレースホルダで拡張可） */
+export const STAGE_DATA = Object.freeze(
+  Array.from({ length: 40 }, (_, i) => {
+    const stage = i + 1;
+    return {
+      stage,
+      backgroundImage: getStageBattleBackground(stage),
+    };
+  })
+);
 export function getWorldInfo(s){
   const p=getPlanet(s);
   return {name:`${p.kanji}  ${p.name}`,bg:p.bg,accent:p.accent,pathCol:p.pathCol,num:p.num};
@@ -33,6 +73,7 @@ export function getStageNodePos(s,scrollOffset=0){
 
 export const ENEMY_PREVIEW_COLORS={normal:'#88ff88',fast:'#00ffff',tank:'#ffffff',sniper:'#ff8800',bomber:'#ff44ff',ufo_drone:'#44ccff',spider:'#aaff44',crystal:'#88aaff',heavy:'#ffccaa'};
 export const ENEMY_PREVIEW_LABELS={normal:'NORMAL',fast:'FAST',tank:'TANK',sniper:'SNIPER',bomber:'BOMBER',ufo_drone:'UFO',spider:'SPIDER',crystal:'CRYSTAL',heavy:'HEAVY'};
+/** ステージ選択の「主な敵」用。実装の全スポーン網羅ではなく代表タイプのみ（UI 側で件数も制限） */
 export function getStageEnemyTypes(s){
   const p=getPlanet(s).name;
   if(p==='MARS'){
@@ -343,8 +384,18 @@ export const NORMAL_QUEST_POOL=[
   {id:'nq_nodmg3', label:'ノーダメクリア 通算3回', reward:{coins:2200,dust:35,gems:3},
     check:(s,_g)=>s.totalNoDmgClears>=3, progress:(s,_g)=>({cur:Math.min(s.totalNoDmgClears,3),max:3})},
 ];
-export const MAT_LABEL={scrap:'🔩スクラップ',core:'⚡コア',crystal:'💎結晶',composite:'🔷コンポジット'};
-export const MAT_COLOR={scrap:'#aaa',core:'#44ccff',crystal:'#cc88ff',composite:'#ffaa44'};
+export const MAT_LABEL={scrap:'🔩スクラップ',core:'⚡コア',crystal:'💎結晶',composite:'🔷コンポジット',fusionStone:'🔮融合石',starCrystal:'💫星結晶'};
+export const MAT_COLOR={scrap:'#aaa',core:'#44ccff',crystal:'#cc88ff',composite:'#ffaa44',fusionStone:'#bb88ff',starCrystal:'#ffffaa'};
+export const MAT_ICON={scrap:'🔩',core:'⚡',crystal:'💎',composite:'🔷',fusionStone:'🔮',starCrystal:'💫'};
+
+export const SYNTH_RECIPES=[
+  {id:'scrap_core',   label:'エネルギー抽出',   icon:'⚡', input:{scrap:8},              output:{type:'core',        n:2}},
+  {id:'core_comp',    label:'コンポジット合成', icon:'🔷', input:{scrap:5,core:3},        output:{type:'composite',   n:1}},
+  {id:'core_crystal', label:'量子結晶化',        icon:'💎', input:{core:8},               output:{type:'crystal',     n:1}},
+  {id:'comp_fstone',  label:'融合石精製',        icon:'🔮', input:{composite:3},          output:{type:'fusionStone', n:1}},
+  {id:'cry_fstone',   label:'高純度融合石',      icon:'🔮', input:{crystal:2,composite:1},output:{type:'fusionStone', n:2}},
+  {id:'star_crystal', label:'星結晶生成',        icon:'💫', input:{fusionStone:3,crystal:3},output:{type:'starCrystal',n:1}},
+];
 
 // Lv毎のコスト定義 [coins, {mat:n,...}, stageReq]
 export const UPGRADE_LV_COSTS=[
@@ -368,7 +419,18 @@ export const SHOP_ITEMS=[
   {id:'bulletspd',label:'弾速強化',      desc:'弾速+3 (最大+30)',     stat:'bulletspd'},
   {id:'critrate', label:'照準AI',        desc:'CRIT率+5% (最大+50%)', stat:'critrate'},
   {id:'dashcd',   label:'スラスターCD',  desc:'ダッシュCD短縮 (最大Lv10)', stat:'dashcd'},
+  {id:'def_regen',  label:'自動修復',      desc:'5秒毎にHP+1/Lv自動回復 (最大+10/5sec)',  stat:'def_regen'},
+  {id:'spd_boost',  label:'加速ブースト',  desc:'ダッシュ速度+10%/Lv (最大+100%)',        stat:'spd_boost'},
+  {id:'spd_phase',  label:'フェーズD',     desc:'ダッシュ無敵+5F/Lv (最大+50F)',          stat:'spd_phase'},
+  {id:'ene_over',   label:'オーバーロード',desc:'弾速+2/Lv + Lv1以上で貫通弾',            stat:'ene_over'},
+  {id:'atk_burst',  label:'バースト弾',    desc:'数秒毎に自動全方位バースト射撃 (最大7-way)', stat:'atk_burst'},
+  {id:'ene_chain',  label:'チェーンボルト',desc:'撃墜時に周囲の敵へ電撃連鎖ダメージ',       stat:'ene_chain'},
+  {id:'arm1',       label:'衝撃吸収',      desc:'被弾ダメージ固定軽減 -2/Lv (最大-20)',     stat:'arm1'},
+  {id:'arm3',       label:'スパイク',      desc:'被弾時に近接敵へ反射ダメージ (Lv×30%)',    stat:'arm3'},
+  {id:'spc1',       label:'スキャナー',    desc:'素材ドロップ率+4%/Lv (最大+40%)',          stat:'spc1'},
+  {id:'spc2',       label:'重力磁場',      desc:'コイン・素材を自動吸引 半径+20/Lv (最大+200)', stat:'spc2'},
+  {id:'spc3',       label:'ラッキー',      desc:'コイン獲得+10%/Lv + 大型コインチャンス',   stat:'spc3'},
 ];
-export const STAGE_TYPE_LABELS={normal:'通常ステージ',boss_rush:'ボス連戦',survival:'サバイバル',escort:'護衛ミッション'};
-export const STAGE_TYPE_DESCS={normal:'敵を倒してボスに挑む',boss_rush:'ボスが連続2回登場！',survival:'30秒間生き残れ！',escort:'輸送船を守り抜け！'};
-export const STAGE_TYPE_COLORS={normal:'#0f0',boss_rush:'#f44',survival:'#0ff',escort:'#f80'};
+export const STAGE_TYPE_LABELS={normal:'通常ステージ',boss_rush:'ボス連戦',survival:'サバイバル'};
+export const STAGE_TYPE_DESCS={normal:'敵を倒してボスに挑む',boss_rush:'ボスが連続2回登場！',survival:'30秒間生き残れ！'};
+export const STAGE_TYPE_COLORS={normal:'#0f0',boss_rush:'#f44',survival:'#0ff'};

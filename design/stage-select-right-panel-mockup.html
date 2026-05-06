@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ステージ選択 — 右パネル モックアップ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #000000;
+      --frame: rgba(255, 55, 40, 0.55);
+      --panel: rgba(6, 8, 14, 0.96);
+      --mission-bg: rgba(12, 22, 48, 0.72);
+      --mission-border: rgba(80, 140, 220, 0.28);
+      --red-glow: #ff3300;
+      --green-clear: #00ff88;
+      --gold: #ffd966;
+      --label-orange: #ffaa66;
+      --muted: #9aa8bc;
+      --chip-bg: rgba(28, 34, 48, 0.95);
+      --chip-border: rgba(100, 120, 160, 0.35);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      font-family: 'Orbitron', system-ui, sans-serif;
+      color: #e8edf5;
+      padding: 24px 12px;
+    }
+
+    .note {
+      position: fixed;
+      top: 10px;
+      left: 12px;
+      right: 12px;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.45);
+      text-align: center;
+      letter-spacing: 0.04em;
+    }
+
+    /* スマホ縦想定の右カラム幅 */
+    .phone-shell {
+      width: min(100%, 400px);
+      border: 1px solid var(--frame);
+      border-radius: 4px;
+      padding: 2px;
+      background: linear-gradient(180deg, rgba(40, 10, 8, 0.4), rgba(0, 0, 0, 0.9));
+      box-shadow: 0 0 40px rgba(255, 40, 20, 0.15);
+    }
+
+    .panel {
+      background: var(--panel);
+      border-radius: 2px;
+      padding: 18px 16px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      min-height: 520px;
+    }
+
+    .hdr-small {
+      text-align: center;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .stage-id {
+      text-align: center;
+      font-size: clamp(52px, 16vw, 72px);
+      font-weight: 900;
+      line-height: 1;
+      color: var(--red-glow);
+      text-shadow:
+        0 0 12px rgba(255, 50, 30, 0.95),
+        0 0 32px rgba(255, 40, 20, 0.55),
+        0 0 56px rgba(200, 30, 10, 0.35);
+      letter-spacing: 0.06em;
+      margin-bottom: 10px;
+    }
+
+    .status {
+      text-align: center;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--green-clear);
+      text-shadow: 0 0 14px rgba(0, 255, 136, 0.45);
+      margin-bottom: 14px;
+    }
+
+    .hr {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255, 100, 60, 0.35), transparent);
+      margin: 4px 0 14px;
+    }
+
+    .mission {
+      border: 1px solid var(--mission-border);
+      border-radius: 12px;
+      background: var(--mission-bg);
+      padding: 12px 12px 14px;
+      box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.45);
+      margin-bottom: 16px;
+    }
+
+    .mission-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .mission-label {
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--label-orange);
+      letter-spacing: 0.1em;
+    }
+
+    .tag-adv {
+      display: inline-block;
+      margin-top: 6px;
+      font-size: 8px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(60, 65, 78, 0.9);
+      color: rgba(200, 205, 220, 0.85);
+      letter-spacing: 0.06em;
+    }
+
+    .reward-line {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--gold);
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .reward-line .gem {
+      display: inline-block;
+      margin-left: 4px;
+      color: #5ad4ff;
+      text-shadow: 0 0 8px rgba(90, 212, 255, 0.6);
+    }
+
+    .mat-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(230, 235, 250, 0.88);
+      margin: 8px 0 10px;
+    }
+
+    .rec-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10px;
+      font-weight: 800;
+      color: rgba(255, 220, 180, 0.9);
+      margin-bottom: 10px;
+    }
+
+    .rec-row span:last-child {
+      font-size: 13px;
+      color: #fff;
+      text-shadow: 0 0 10px rgba(255, 200, 120, 0.35);
+    }
+
+    .cond-label {
+      font-size: 9px;
+      font-weight: 800;
+      color: rgba(255, 200, 140, 0.75);
+      margin-bottom: 6px;
+      letter-spacing: 0.08em;
+    }
+
+    .chips {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      flex: 1;
+      min-width: 0;
+      text-align: center;
+      font-size: 7px;
+      font-weight: 800;
+      padding: 7px 4px;
+      border-radius: 8px;
+      background: var(--chip-bg);
+      border: 1px solid var(--chip-border);
+      color: rgba(210, 220, 245, 0.9);
+    }
+
+    .enemy-block {
+      margin-bottom: 18px;
+    }
+
+    .enemy-title {
+      text-align: center;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      color: rgba(230, 238, 255, 0.9);
+      margin-bottom: 12px;
+    }
+
+    .enemy-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .enemy-cell {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .enemy-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 0 12px rgba(0, 0, 0, 0.5);
+    }
+
+    .enemy-lbl {
+      font-size: 7px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      color: rgba(130, 220, 255, 0.88);
+      text-shadow: 0 0 8px rgba(80, 200, 255, 0.35);
+      text-align: center;
+    }
+
+    .spacer {
+      flex: 1;
+      min-height: 8px;
+    }
+
+    .fuel-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: rgba(8, 14, 32, 0.92);
+      border: 1px solid rgba(59, 140, 220, 0.35);
+      margin-bottom: 12px;
+    }
+
+    .fuel-icon {
+      font-size: 14px;
+    }
+
+    .fuel-txt {
+      font-size: 11px;
+      font-weight: 800;
+      color: rgba(200, 235, 255, 0.95);
+    }
+
+    .fuel-bar {
+      flex: 1;
+      height: 8px;
+      border-radius: 4px;
+      background: rgba(0, 20, 40, 0.85);
+      border: 1px solid rgba(59, 167, 255, 0.35);
+      overflow: hidden;
+    }
+
+    .fuel-fill {
+      width: 90%;
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, #1a6ec4, #3ba7ff);
+      box-shadow: 0 0 10px rgba(59, 167, 255, 0.5);
+    }
+
+    .launch {
+      width: 100%;
+      border: none;
+      cursor: default;
+      font-family: inherit;
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: 0.16em;
+      padding: 15px 16px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4em;
+      color: #fff;
+      background: linear-gradient(180deg, #ff4422 0%, #cc2208 48%, #881404 100%);
+      border: 3px solid rgba(255, 100, 70, 0.85);
+      box-shadow:
+        0 0 28px rgba(255, 70, 40, 0.65),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+
+    .launch-play {
+      color: rgba(255, 248, 240, 0.98);
+      text-shadow: 0 0 12px rgba(255, 200, 160, 0.9);
+    }
+
+    .launch-word {
+      color: rgba(255, 200, 140, 0.98);
+      text-shadow: 0 0 16px rgba(255, 120, 60, 0.55);
+    }
+
+    /* 簡易アイコン（本番は canvas プレビューと同等のシルエット想定） */
+    .ic-norm {
+      width: 0;
+      height: 0;
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      border-bottom: 18px solid #66ff88;
+      filter: drop-shadow(0 0 6px #44ff66);
+    }
+    .ic-fast {
+      width: 0;
+      height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-bottom: 20px solid #00ffff;
+      transform: rotate(0deg);
+      filter: drop-shadow(0 0 6px #00ccff);
+    }
+    .ic-spid {
+      width: 16px;
+      height: 16px;
+      border: 2px solid #ffdd44;
+      border-radius: 2px;
+      box-shadow: 0 0 8px rgba(255, 220, 80, 0.5);
+    }
+    .ic-ufo {
+      width: 22px;
+      height: 10px;
+      background: #44ccff;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #22aaff;
+    }
+    .ic-bomb {
+      width: 18px;
+      height: 18px;
+      border: 3px solid #ff66ee;
+      border-radius: 50%;
+      box-shadow: 0 0 8px rgba(255, 80, 220, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <p class="note">モックアップ（1-6 応用ステージ例）— 確定後に <code>stage-select-overlay.js</code> / <code>stage-select.css</code> へ反映</p>
+
+  <div class="phone-shell">
+    <div class="panel">
+      <div class="hdr-small">火星 MARS</div>
+      <div class="stage-id">1-6</div>
+      <div class="status">✓ クリア済み</div>
+
+      <div class="hr"></div>
+
+      <div class="mission">
+        <div class="mission-top">
+          <div>
+            <div class="mission-label">報酬</div>
+            <div class="tag-adv">応用ステージ</div>
+            <div class="mat-row">
+              <span>⚡×2</span>
+              <span>🔩×3</span>
+            </div>
+          </div>
+          <div>
+            <div class="reward-line">128~167 <span class="gem">💎4</span></div>
+          </div>
+        </div>
+        <div class="rec-row">
+          <span>推奨 ⚡</span>
+          <span>720</span>
+        </div>
+        <div class="cond-label">★ 条件</div>
+        <div class="chips">
+          <div class="chip">★1 クリア</div>
+          <div class="chip">★2 Cmb5</div>
+          <div class="chip">★3 無傷</div>
+        </div>
+      </div>
+
+      <div class="enemy-block">
+        <div class="enemy-title">出現する敵</div>
+        <div class="enemy-row">
+          <div class="enemy-cell">
+            <div class="enemy-icon"><div class="ic-norm"></div></div>
+            <div class="enemy-lbl">NORM</div>
+          </div>
+          <div class="enemy-cell">
+            <div class="enemy-icon"><div class="ic-fast"></div></div>
+            <div class="enemy-lbl">FAST</div>
+          </div>
+          <div class="enemy-cell">
+            <div class="enemy-icon"><div class="ic-spid"></div></div>
+            <div class="enemy-lbl">SPID</div>
+          </div>
+          <div class="enemy-cell">
+            <div class="enemy-icon"><div class="ic-ufo"></div></div>
+            <div class="enemy-lbl">UFO</div>
+          </div>
+          <div class="enemy-cell">
+            <div class="enemy-icon"><div class="ic-bomb"></div></div>
+            <div class="enemy-lbl">BOMB</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="spacer"></div>
+
+      <div class="fuel-row">
+        <span class="fuel-icon">⛽</span>
+        <span class="fuel-txt">FUEL 9/10</span>
+        <div class="fuel-bar"><div class="fuel-fill"></div></div>
+      </div>
+
+      <button type="button" class="launch" disabled>
+        <span class="launch-play">▶</span>
+        <span class="launch-word">出撃</span>
+      </button>
+    </div>
+  </div>
+</body>
+</html>

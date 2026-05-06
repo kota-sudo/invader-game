@@ -1,0 +1,1623 @@
+/* 銀河マップ（タイトル → 惑星選択）— シェル風レイアウト */
+.galaxy-map-root {
+  --gm-text: #e8edf5;
+  --gm-muted: rgba(180, 195, 220, 0.72);
+  --gm-accent: #ff7a3a;
+  --gm-accent-dim: rgba(255, 122, 58, 0.35);
+  --gm-selected-theme: #ff5533;
+  --gm-link-x: 24;
+  --gm-link-y: 38;
+  --gm-line: rgba(100, 160, 255, 0.14);
+  --gm-font: 'Orbitron', 'Zen Kaku Gothic New', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', system-ui, sans-serif;
+  /* 透過惑星 PNG 用：白っぽい縁取りを避け、青〜オレンジの弱い発光に統一 */
+  --gm-planet-glow-cool: rgba(80, 160, 230, 0.38);
+  --gm-planet-glow-warm: rgba(255, 110, 60, 0.26);
+  /* 右パネル切り欠き（::before/::after と共有） */
+  --gm-card-clip: polygon(12px 0%,
+      calc(100% - 12px) 0%,
+      100% 12px,
+      100% calc(100% - 12px),
+      calc(100% - 12px) 100%,
+      12px 100%,
+      0% calc(100% - 12px),
+      0% 12px);
+
+  position: absolute;
+  inset: 0;
+  z-index: 14;
+  font-family: var(--gm-font);
+  color: var(--gm-text);
+  letter-spacing: 0.04em;
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+  background: radial-gradient(ellipse 120% 90% at 50% 35%, #0c1430 0%, #050810 50%, #020308 100%);
+}
+
+/* 任意画像（存在時のみ JS が .gm-asset-* と --gm-asset-*-url を付与。無いときは上のグラデのみ） */
+.galaxy-map-root.gm-asset-bg {
+  background-image:
+    var(--gm-asset-bg-url),
+    radial-gradient(ellipse 120% 90% at 50% 35%, #0c1430 0%, #050810 50%, #020308 100%);
+  background-size: cover, auto;
+  background-position: center, center;
+  background-repeat: no-repeat, no-repeat;
+}
+
+.galaxy-map-root *,
+.galaxy-map-root *::before,
+.galaxy-map-root *::after {
+  font-family: var(--gm-font);
+}
+
+.galaxy-map-root.gm-hidden {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+.galaxy-map-root .gm-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  position: relative;
+}
+
+/* ----- ヘッダー ----- */
+.galaxy-map-root .gm-header-bar {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: minmax(200px, 1.38fr) minmax(0, 1fr) minmax(168px, 1.05fr);
+  align-items: center;
+  gap: 6px 10px;
+  padding: 8px 10px 10px;
+  border-bottom: 1px solid var(--gm-line);
+  background: linear-gradient(180deg, rgba(10, 18, 36, 0.97), rgba(6, 10, 22, 0.55));
+}
+
+.galaxy-map-root .gm-h-profile {
+  justify-self: start;
+  min-width: 0;
+}
+
+/* モック寄せ：六角アイコン＋ID_* ＋ LV. ＋ EXP */
+.galaxy-map-root .gm-h-profile-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.galaxy-map-root .gm-h-avatar-wrap {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 0;
+  overflow: hidden;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  box-shadow:
+    0 0 0 2px rgba(255, 140, 70, 0.75),
+    0 0 14px rgba(255, 120, 50, 0.35);
+}
+
+.galaxy-map-root .gm-h-avatar-canvas {
+  display: block;
+  vertical-align: top;
+}
+
+.galaxy-map-root .gm-h-profile-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.galaxy-map-root .gm-h-profile-id {
+  font-size: clamp(11px, 2.6vw, 13px);
+  font-weight: 900;
+  color: #f4f6ff;
+  letter-spacing: 0.04em;
+  margin-bottom: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: min(58vw, 280px);
+  text-shadow: 0 0 12px rgba(255, 140, 80, 0.2);
+}
+
+.galaxy-map-root .gm-h-profile-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: min(58vw, 300px);
+}
+
+.galaxy-map-root .gm-h-exp-track {
+  flex: 1;
+  min-width: 48px;
+  max-width: 140px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 140, 80, 0.25);
+  overflow: hidden;
+}
+
+.galaxy-map-root .gm-h-exp-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ff5522, #ffb24a);
+  box-shadow: 0 0 10px rgba(255, 120, 60, 0.45);
+  transition: width 0.15s ease-out;
+}
+
+.galaxy-map-root .gm-h-exp-pct {
+  font-size: 9px;
+  font-weight: 800;
+  color: rgba(255, 200, 160, 0.9);
+  width: 2.2em;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.galaxy-map-root .gm-h-title-block {
+  text-align: center;
+  justify-self: center;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0 4px;
+}
+
+.galaxy-map-root .gm-h-title-en {
+  font-size: clamp(13px, 2.6vw, 18px);
+  font-weight: 900;
+  color: rgba(255, 248, 238, 0.98);
+  text-shadow:
+    0 0 18px rgba(255, 120, 60, 0.4),
+    0 0 28px rgba(255, 80, 40, 0.22),
+    0 0 24px rgba(80, 160, 255, 0.18);
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.galaxy-map-root .gm-h-title-sub {
+  font-size: 10px;
+  font-weight: 800;
+  color: rgba(255, 170, 110, 0.95);
+  margin-top: 3px;
+  letter-spacing: 0.18em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.galaxy-map-root .gm-h-resources {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.galaxy-map-root .gm-h-resources-strips {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  min-width: 0;
+}
+
+.galaxy-map-root .gm-res-strip {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  gap: 8px;
+  font-size: clamp(10px, 2.2vw, 12px);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.galaxy-map-root .gm-res-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.galaxy-map-root .gm-res-icon {
+  font-size: 10px;
+  opacity: 0.85;
+}
+
+.galaxy-map-root .gm-res-gem {
+  color: #6ad4ff;
+  text-shadow: 0 0 8px rgba(100, 200, 255, 0.5);
+}
+
+.galaxy-map-root .gm-res-shard {
+  color: #ffb24a;
+  text-shadow: 0 0 8px rgba(255, 160, 60, 0.45);
+}
+
+.galaxy-map-root .gm-res-coin {
+  color: #ffd45a;
+}
+
+.galaxy-map-root .gm-res-strip .gm-res-val {
+  min-width: 3.2em;
+  padding-right: 2px;
+  color: #eef2ff;
+  text-align: right;
+}
+
+.galaxy-map-root .gm-res-strip .gm-res-plus {
+  margin-left: 2px;
+}
+
+.galaxy-map-root .gm-res-val {
+  min-width: 2.5em;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.galaxy-map-root .gm-res-plus {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(20, 30, 55, 0.85);
+  color: rgba(200, 220, 255, 0.95);
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.galaxy-map-root .gm-res-plus:hover {
+  border-color: var(--gm-accent);
+  color: #fff;
+}
+
+.galaxy-map-root .gm-h-settings {
+  width: 32px;
+  height: 32px;
+  margin-left: 2px;
+  border-radius: 10px;
+  border: 1px solid rgba(140, 190, 255, 0.22);
+  background: rgba(12, 18, 34, 0.9);
+  color: rgba(220, 230, 255, 0.9);
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.galaxy-map-root .gm-h-settings:hover {
+  border-color: rgba(255, 180, 120, 0.45);
+  color: #fff;
+}
+
+/* ----- メイン ----- */
+.galaxy-map-root .gm-main {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(200px, 300px);
+  gap: 10px;
+  padding: 8px 10px 6px;
+  position: relative;
+}
+
+.galaxy-map-root .gm-selection-link {
+  position: absolute;
+  left: calc(10px + (100% - 320px) * var(--gm-link-x) / 100);
+  top: calc(8px + (100% - 14px) * var(--gm-link-y) / 100);
+  width: calc(100% - 330px - (100% - 320px) * var(--gm-link-x) / 100);
+  height: 1px;
+  z-index: 3;
+  pointer-events: none;
+  transform-origin: left center;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gm-selected-theme) 68%, transparent), rgba(255, 255, 255, 0.08), transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--gm-selected-theme) 38%, transparent);
+  opacity: 0.42;
+}
+
+@media (max-aspect-ratio: 4/3) {
+  .galaxy-map-root .gm-main {
+    grid-template-columns: minmax(0, 1fr) minmax(180px, 40vw);
+  }
+}
+
+.galaxy-map-root .gm-map-col {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.galaxy-map-root .gm-map-area {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 120, 70, 0.18);
+  background: rgba(4, 8, 18, 0.28);
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.35);
+}
+
+.galaxy-map-root .gm-nebula {
+  position: absolute;
+  inset: -20%;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 55% 42% at 72% 28%, rgba(120, 50, 90, 0.28), transparent 58%),
+    radial-gradient(ellipse 48% 38% at 18% 72%, rgba(40, 90, 160, 0.22), transparent 55%),
+    radial-gradient(ellipse 65% 52% at 48% 48%, rgba(30, 50, 100, 0.18), transparent 72%);
+  pointer-events: none;
+}
+
+.galaxy-map-root.gm-asset-nebula .gm-nebula {
+  background-image:
+    var(--gm-asset-nebula-url),
+    radial-gradient(ellipse 55% 42% at 72% 28%, rgba(120, 50, 90, 0.28), transparent 58%),
+    radial-gradient(ellipse 48% 38% at 18% 72%, rgba(40, 90, 160, 0.22), transparent 55%),
+    radial-gradient(ellipse 65% 52% at 48% 48%, rgba(30, 50, 100, 0.18), transparent 72%);
+  background-size: cover, auto, auto, auto;
+  background-position: center, center, center, center;
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat;
+}
+
+/* ハブ周りの発光（横長 route-glow PNG は帯状アーティファクトになるため未使用。CSS のみ） */
+.galaxy-map-root .gm-route-glow-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 1;
+  background-color: transparent;
+  background-image:
+    radial-gradient(ellipse 38% 26% at 50% 43.2%, rgba(255, 100, 55, 0.3), transparent 68%),
+    radial-gradient(ellipse 52% 40% at 50% 43.2%, rgba(180, 60, 120, 0.12), transparent 75%);
+  mix-blend-mode: screen;
+}
+
+/* 画像コア：screen グローがコア周りで白リング化するのでオフ（コア画像の発光だけ使う） */
+.galaxy-map-root.gm-asset-core .gm-route-glow-layer {
+  opacity: 0;
+  mix-blend-mode: normal;
+  pointer-events: none;
+}
+
+.galaxy-map-root .gm-routes-svg {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.galaxy-map-root .gm-route-wrap .gm-route-halo {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.85;
+  opacity: 0.26;
+  stroke-dasharray: 4.2 2.75;
+  stroke-dashoffset: 0;
+  filter: drop-shadow(0 0 3px rgba(255, 150, 100, 0.35));
+}
+
+.galaxy-map-root .gm-route-wrap:not(.gm-route-dim) .gm-route-halo {
+  opacity: 0.42;
+  filter: drop-shadow(0 0 6px rgba(255, 120, 70, 0.45)) drop-shadow(0 0 2px rgba(255, 220, 180, 0.25));
+  animation: gm-route-halo-flow 16s linear infinite reverse;
+}
+
+.galaxy-map-root .gm-route-wrap .gm-route-line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 0.88;
+  stroke-dasharray: 3.15 2.05;
+  stroke-dashoffset: 0;
+  filter: drop-shadow(0 0 1.8px rgba(255, 210, 170, 0.4));
+}
+
+.galaxy-map-root .gm-route-wrap:not(.gm-route-dim) .gm-route-line {
+  filter:
+    drop-shadow(0 0 2.5px rgba(255, 200, 140, 0.55)) drop-shadow(0 0 8px rgba(255, 100, 50, 0.28)) drop-shadow(0 0 1.5px rgba(255, 230, 200, 0.35));
+}
+
+.galaxy-map-root .gm-route-wrap.gm-route-dim path {
+  filter: drop-shadow(0 0 0.8px rgba(160, 170, 190, 0.15));
+}
+
+.galaxy-map-root .gm-route-wrap.gm-route-dim {
+  opacity: 0.24;
+}
+
+.galaxy-map-root .gm-route-wrap:not(.gm-route-dim) .gm-route-line {
+  animation: gm-route-dash-flow 11s linear infinite;
+}
+
+@keyframes gm-route-dash-flow {
+  to {
+    stroke-dashoffset: -36;
+  }
+}
+
+@keyframes gm-route-halo-flow {
+  to {
+    stroke-dashoffset: -42;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .galaxy-map-root .gm-route-wrap:not(.gm-route-dim) .gm-route-line,
+  .galaxy-map-root .gm-route-wrap:not(.gm-route-dim) .gm-route-halo {
+    animation: none;
+  }
+}
+
+.galaxy-map-root .gm-route-dot {
+  fill: rgba(255, 190, 130, 0.88);
+  stroke: rgba(40, 30, 20, 0.35);
+  stroke-width: 0.06;
+  filter: drop-shadow(0 0 0.35px rgba(255, 220, 180, 0.9));
+  transition: opacity 0.2s ease;
+}
+
+.galaxy-map-root .gm-route-dot.gm-route-dim {
+  opacity: 0.22;
+  fill: rgba(140, 150, 170, 0.45);
+  filter: none;
+}
+
+.galaxy-map-root .gm-hub {
+  position: absolute;
+  width: 0;
+  height: 0;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* 完成系モック寄せ：コア背後の渦状グロー（画像の白飛びを宇宙色に馴染ませる手助け） */
+.galaxy-map-root .gm-hub-spiral {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 68px;
+  height: 68px;
+  margin: -34px 0 0 -34px;
+  border-radius: 50%;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.58;
+  mix-blend-mode: screen;
+  background: conic-gradient(from -30deg,
+      transparent 0deg,
+      rgba(255, 160, 90, 0.35) 55deg,
+      transparent 100deg,
+      rgba(255, 210, 160, 0.22) 165deg,
+      transparent 210deg,
+      rgba(255, 100, 50, 0.28) 290deg,
+      transparent 360deg);
+  animation: gm-hub-spiral 22s linear infinite;
+  transform-origin: center center;
+}
+
+@keyframes gm-hub-spiral {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.galaxy-map-root .gm-hub-core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border-radius: 50%;
+  overflow: hidden;
+  z-index: 2;
+  background:
+    radial-gradient(circle at 40% 32%, rgba(255, 255, 255, 0.95), rgba(255, 200, 140, 0.45) 28%, transparent 55%),
+    radial-gradient(circle at 35% 30%, #fff8e8, #ff8844 42%, #2a1008 100%);
+  box-shadow:
+    0 0 32px rgba(255, 200, 120, 0.8),
+    0 0 64px rgba(255, 120, 60, 0.35);
+}
+
+/* 画像コア：screen の渦も外周で明るく乗るので非表示 */
+.galaxy-map-root.gm-asset-core .gm-hub-spiral {
+  opacity: 0;
+  visibility: hidden;
+  clip-path: circle(50% at 50% 50%);
+}
+
+/* 画像コア：JPEG 角の白・矩形を clip-path で確実に円切り（mask と併用） */
+.galaxy-map-root.gm-asset-core .gm-hub-core {
+  width: 42px;
+  height: 42px;
+  margin: -21px 0 0 -21px;
+  isolation: isolate;
+  contain: paint;
+  clip-path: circle(50% at 50% 50%);
+  background: radial-gradient(circle at 50% 50%, rgba(6, 10, 22, 0.55) 0%, rgba(4, 6, 14, 0.92) 72%, #03050c 100%);
+  box-shadow: none;
+}
+
+.galaxy-map-root.gm-asset-core .gm-hub-core::before {
+  content: '';
+  position: absolute;
+  inset: -16%;
+  border-radius: 50%;
+  clip-path: circle(50% at 50% 50%);
+  background: var(--gm-asset-core-url) center / cover no-repeat;
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 0%, #000 90%, transparent 100%);
+  mask-image: radial-gradient(circle at 50% 50%, #000 0%, #000 90%, transparent 100%);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* 外周の白っぽい縁（素材＋発光）を multiply＋縁ビネットで抑える */
+.galaxy-map-root.gm-asset-core .gm-hub-core::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  clip-path: circle(50% at 50% 50%);
+  pointer-events: none;
+  z-index: 3;
+  background: radial-gradient(circle at 50% 50%,
+      transparent 0%,
+      transparent 38%,
+      rgba(255, 90, 40, 0.06) 55%,
+      rgba(0, 0, 0, 0.55) 78%,
+      rgba(0, 0, 0, 0.85) 100%);
+  mix-blend-mode: multiply;
+  box-shadow:
+    inset 0 0 26px 12px rgba(0, 0, 0, 0.65),
+    inset 0 0 5px 2px rgba(2, 4, 12, 0.95);
+}
+
+.galaxy-map-root.gm-asset-core .gm-hub-ring {
+  opacity: 0.35;
+  border-color: rgba(255, 160, 100, 0.14);
+}
+
+.galaxy-map-root.gm-asset-core .gm-hub-ring-b {
+  border-color: rgba(100, 160, 220, 0.1);
+}
+
+.galaxy-map-root .gm-hub-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 200, 140, 0.35);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.galaxy-map-root .gm-hub-ring-a {
+  width: 50px;
+  height: 50px;
+  margin: -25px 0 0 -25px;
+  animation: gm-hub-spin-a 18s linear infinite;
+}
+
+.galaxy-map-root .gm-hub-ring-b {
+  width: 72px;
+  height: 72px;
+  margin: -36px 0 0 -36px;
+  border-color: rgba(120, 200, 255, 0.16);
+  animation: gm-hub-spin-b 26s linear infinite;
+}
+
+@keyframes gm-hub-spin-a {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes gm-hub-spin-b {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+.galaxy-map-root .gm-hub-label {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin-top: 36px;
+  transform: translateX(-50%);
+  z-index: 4;
+  text-align: center;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  line-height: 1.2;
+  color: rgba(210, 235, 255, 0.88);
+  text-shadow:
+    0 0 12px rgba(40, 80, 140, 0.55),
+    0 0 10px rgba(100, 180, 255, 0.28);
+  white-space: nowrap;
+  padding: 5px 12px 6px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(8, 14, 28, 0.72), rgba(4, 8, 18, 0.88));
+  border: 1px solid rgba(100, 160, 220, 0.18);
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 220, 180, 0.06);
+}
+
+.galaxy-map-root .gm-nodes {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+}
+
+.galaxy-map-root .gm-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 100px;
+  height: 108px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
+}
+
+.galaxy-map-root .gm-node-sel-ring {
+  position: absolute;
+  left: 50%;
+  top: 26px;
+  width: 64px;
+  height: 64px;
+  margin: -32px 0 0 -32px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: rgba(180, 240, 255, 0.85);
+  border-right-color: rgba(180, 240, 255, 0.25);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+  transition: opacity 0.2s ease;
+}
+
+.galaxy-map-root .gm-node-selected .gm-node-sel-ring {
+  opacity: 1;
+  animation: gm-sel-orbit 5.5s linear infinite;
+  border-top-color: rgba(255, 170, 100, 0.95);
+  border-right-color: rgba(255, 100, 50, 0.35);
+}
+
+@keyframes gm-sel-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.galaxy-map-root .gm-node-planet {
+  position: relative;
+  z-index: 1;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  overflow: hidden;
+  isolation: isolate;
+  background: transparent;
+  box-shadow:
+    0 0 10px var(--gm-planet-glow-cool),
+    0 0 18px var(--gm-planet-glow-warm),
+    inset 0 -8px 14px rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(70, 140, 200, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+/* 角の白縁・矩形を内側シャドウで食う（素材焼き込みは完全除去不可） */
+.galaxy-map-root .gm-node-planet::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 2;
+  box-shadow:
+    inset 0 0 14px 6px rgba(0, 0, 0, 0.78),
+    inset 0 0 5px 2px rgba(30, 60, 100, 0.4),
+    0 0 0 1px rgba(4, 8, 16, 0.85);
+}
+
+/* 画像欠落時のみ暗い球で埋める（透過 PNG 時は背景は出ない） */
+.galaxy-map-root .gm-node-planet:has(.gm-node-planet-img.gm-img-broken) {
+  background: radial-gradient(circle at 50% 40%, rgba(40, 55, 90, 0.55), rgba(4, 6, 14, 0.92) 72%);
+}
+
+.galaxy-map-root .gm-node-planet-img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  border-radius: 50%;
+  z-index: 1;
+  pointer-events: none;
+  transform: scale(1.24);
+  transform-origin: center center;
+  -webkit-mask-image: radial-gradient(circle at 50% 50%,
+      #000 82%,
+      rgba(0, 0, 0, 0.5) 92%,
+      transparent 100%);
+  mask-image: radial-gradient(circle at 50% 50%,
+      #000 82%,
+      rgba(0, 0, 0, 0.5) 92%,
+      transparent 100%);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
+.galaxy-map-root .gm-node-planet-img.gm-img-broken {
+  display: none;
+}
+
+.galaxy-map-root .gm-node-lock {
+  display: none;
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  font-size: 14px;
+  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.8));
+  z-index: 2;
+}
+
+.galaxy-map-root .gm-node-locked .gm-node-lock {
+  display: block;
+  opacity: 0.52;
+  transform: scale(0.88);
+}
+
+.galaxy-map-root .gm-node-locked .gm-node-planet {
+  filter: grayscale(0.55) brightness(0.55);
+  box-shadow:
+    0 0 6px rgba(40, 80, 120, 0.2),
+    0 0 10px rgba(0, 0, 0, 0.45),
+    inset 0 -6px 10px rgba(0, 0, 0, 0.55);
+}
+
+.galaxy-map-root .gm-node-dim .gm-node-planet {
+  opacity: 0.42;
+  filter: grayscale(0.9) brightness(0.45);
+}
+
+.galaxy-map-root .gm-node:not(.gm-node-locked):hover .gm-node-planet {
+  transform: scale(1.06);
+}
+
+.galaxy-map-root .gm-node-selected .gm-node-planet {
+  border-color: rgba(255, 130, 70, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(255, 140, 80, 0.9),
+    0 0 0 4px rgba(6, 10, 20, 0.98),
+    0 0 0 5px rgba(255, 100, 45, 0.55),
+    0 0 16px rgba(255, 120, 60, 0.35),
+    0 0 24px rgba(80, 160, 230, 0.2),
+    inset 0 -8px 14px rgba(0, 0, 0, 0.5);
+  animation: gm-node-pulse 2.4s ease-in-out infinite;
+}
+
+.galaxy-map-root .gm-node-muted:not(.gm-node-selected) {
+  opacity: 0.6;
+}
+
+.galaxy-map-root .gm-node-muted:not(.gm-node-selected) .gm-node-planet {
+  filter: brightness(0.58) saturate(0.65);
+}
+
+.galaxy-map-root .gm-node-muted:not(.gm-node-selected) .gm-node-chip,
+.galaxy-map-root .gm-node-muted:not(.gm-node-selected) .gm-node-stars {
+  opacity: 0.34;
+}
+
+.galaxy-map-root .gm-node-muted:not(.gm-node-selected) .gm-node-lock {
+  opacity: 0.34;
+}
+
+@keyframes gm-node-pulse {
+
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(255, 130, 70, 0.75),
+      0 0 0 4px rgba(6, 10, 20, 0.98),
+      0 0 0 5px rgba(255, 90, 40, 0.42),
+      0 0 14px rgba(255, 110, 55, 0.28),
+      0 0 20px rgba(70, 150, 220, 0.16),
+      inset 0 -8px 14px rgba(0, 0, 0, 0.5);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 2px rgba(255, 160, 100, 0.95),
+      0 0 0 5px rgba(6, 10, 20, 0.98),
+      0 0 0 6px rgba(255, 110, 50, 0.58),
+      0 0 22px rgba(255, 130, 70, 0.38),
+      0 0 28px rgba(90, 170, 255, 0.22),
+      inset 0 -8px 14px rgba(0, 0, 0, 0.5);
+  }
+}
+
+.galaxy-map-root .gm-node-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.15;
+  margin-top: 3px;
+}
+
+.galaxy-map-root .gm-node-ja {
+  font-size: 10px;
+  font-weight: 800;
+  color: rgba(240, 245, 255, 0.92);
+}
+
+.galaxy-map-root .gm-node-en {
+  font-size: 8px;
+  font-weight: 800;
+  color: var(--gm-muted);
+  letter-spacing: 0.12em;
+}
+
+.galaxy-map-root .gm-node-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-top: 3px;
+  z-index: 1;
+}
+
+.galaxy-map-root .gm-node-chip {
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(220, 230, 250, 0.88);
+}
+
+.galaxy-map-root .gm-node-locked .gm-node-chip {
+  color: rgba(255, 200, 160, 0.75);
+  border-color: rgba(255, 160, 100, 0.2);
+}
+
+.galaxy-map-root .gm-node-stars {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #ffd45a;
+  text-shadow: 0 0 8px rgba(255, 200, 80, 0.35);
+}
+
+.galaxy-map-root .gm-node-stars-muted {
+  color: rgba(120, 130, 150, 0.55);
+  text-shadow: none;
+}
+
+/* マップ左下 */
+.galaxy-map-root .gm-map-actions {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  z-index: 4;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.galaxy-map-root .gm-map-act {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(120, 180, 255, 0.22);
+  background: rgba(8, 14, 28, 0.82);
+  color: rgba(210, 225, 255, 0.92);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.galaxy-map-root .gm-map-act:hover {
+  border-color: rgba(255, 160, 100, 0.4);
+  color: #fff;
+}
+
+/* ----- 右カード ----- */
+.galaxy-map-root .gm-side {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+  min-height: 0;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.galaxy-map-root .gm-card {
+  position: relative;
+  isolation: isolate;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 12px 10px;
+  border-radius: 0;
+  /* モック寄せ：切り欠きパネル＋オレンジ縁の発光（枠 PNG は補助） */
+  clip-path: var(--gm-card-clip);
+  border: 1px solid rgba(255, 110, 50, 0.42);
+  background-color: transparent;
+  background-image:
+    linear-gradient(135deg, rgba(255, 100, 50, 0.18) 0%, transparent 14%),
+    linear-gradient(315deg, rgba(100, 180, 255, 0.08) 0%, transparent 12%),
+    linear-gradient(165deg, rgba(12, 16, 30, 0.92), rgba(4, 6, 14, 0.94));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 130, 80, 0.15),
+    inset 0 0 32px rgba(0, 0, 0, 0.42),
+    0 0 0 1px rgba(0, 0, 0, 0.45),
+    0 0 28px rgba(255, 90, 40, 0.12),
+    0 0 48px rgba(40, 90, 160, 0.1);
+}
+
+/* コンテンツ背後のベース塗り（チェッカー透け防止）。枠 PNG の白やパターンは載せない */
+.galaxy-map-root.gm-asset-panel .gm-card::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 2px;
+  clip-path: var(--gm-card-clip);
+  background: linear-gradient(165deg, rgba(6, 10, 22, 0.97), rgba(2, 4, 12, 0.98));
+  pointer-events: none;
+  z-index: 0;
+}
+
+/*
+ * 枠 PNG: 透過ならそのまま重ねる。白・グレーのチェックや不透明の白が「焼き込み」なら
+ * multiply でも完全には消えない → 素材の再エクスポート（アルファのみ／白なし）を推奨。
+ * 装飾は .gm-card の CSS 枠が主で、画像は薄いアクセントに抑える。
+ */
+.galaxy-map-root.gm-asset-panel .gm-card::after {
+  content: '';
+  position: absolute;
+  inset: -6px -5px -6px -5px;
+  border-radius: 2px;
+  clip-path: var(--gm-card-clip);
+  background: var(--gm-asset-panel-frame-url) center / 100% 100% no-repeat;
+  opacity: 0.35;
+  mix-blend-mode: multiply;
+  filter: brightness(1.05) contrast(1.08);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.galaxy-map-root.gm-asset-panel .gm-card>* {
+  position: relative;
+  z-index: 2;
+}
+
+.galaxy-map-root .gm-card-accent {
+  position: absolute;
+  left: 7px;
+  top: 18px;
+  bottom: 18px;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, transparent, var(--gm-selected-theme), transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--gm-selected-theme) 46%, transparent);
+  opacity: 0.78;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.galaxy-map-root .gm-card-hero {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  padding: 4px 0 2px;
+}
+
+.galaxy-map-root .gm-card-planet-wrap {
+  width: 100%;
+  max-width: 200px;
+  aspect-ratio: 1;
+  max-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
+
+.galaxy-map-root .gm-card-planet {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-width: 112px;
+  max-height: 112px;
+  border-radius: 50%;
+  overflow: hidden;
+  isolation: isolate;
+  background: transparent;
+  box-shadow:
+    0 0 14px var(--gm-planet-glow-cool),
+    0 0 26px var(--gm-planet-glow-warm),
+    0 0 36px rgba(255, 90, 40, 0.08),
+    inset 0 -10px 20px rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(70, 140, 200, 0.3);
+}
+
+.galaxy-map-root .gm-card-planet::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 2;
+  box-shadow:
+    inset 0 0 22px 10px rgba(0, 0, 0, 0.82),
+    inset 0 0 8px 3px rgba(20, 35, 60, 0.55),
+    0 0 0 1px rgba(6, 10, 18, 0.9);
+}
+
+.galaxy-map-root .gm-card-planet:has(.gm-card-planet-img.gm-img-broken) {
+  background: radial-gradient(circle at 50% 40%, rgba(40, 55, 90, 0.5), rgba(4, 6, 14, 0.92) 72%);
+}
+
+.galaxy-map-root .gm-card-planet-img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  border-radius: 50%;
+  z-index: 1;
+  pointer-events: none;
+  transform: scale(1.22);
+  transform-origin: center center;
+  -webkit-mask-image: radial-gradient(circle at 50% 50%,
+      #000 80%,
+      rgba(0, 0, 0, 0.55) 91%,
+      transparent 100%);
+  mask-image: radial-gradient(circle at 50% 50%,
+      #000 80%,
+      rgba(0, 0, 0, 0.55) 91%,
+      transparent 100%);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
+.galaxy-map-root .gm-card-planet-img.gm-img-broken {
+  opacity: 0;
+}
+
+.galaxy-map-root .gm-card-planet-dim {
+  filter: grayscale(0.65) brightness(0.5);
+  box-shadow:
+    0 0 8px rgba(40, 80, 120, 0.18),
+    0 0 14px rgba(0, 0, 0, 0.45),
+    inset 0 -8px 16px rgba(0, 0, 0, 0.55);
+}
+
+.galaxy-map-root .gm-card-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding-top: 2px;
+}
+
+.galaxy-map-root .gm-card-title {
+  font-size: 15px;
+  font-weight: 900;
+  color: rgba(255, 160, 95, 0.98);
+  text-align: center;
+  margin: 0;
+  padding-bottom: 2px;
+  text-shadow:
+    0 0 12px rgba(255, 100, 50, 0.45),
+    0 0 22px rgba(255, 80, 40, 0.2);
+  letter-spacing: 0.06em;
+}
+
+.galaxy-map-root .gm-card-badge {
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.galaxy-map-root .gm-card-badge-ok {
+  color: rgba(160, 255, 200, 0.95);
+  background: rgba(20, 60, 40, 0.55);
+  border-color: rgba(100, 255, 160, 0.35);
+  box-shadow: 0 0 12px rgba(80, 200, 120, 0.2);
+}
+
+.galaxy-map-root .gm-card-badge-locked {
+  color: rgba(255, 200, 140, 0.88);
+  background: rgba(50, 28, 12, 0.5);
+  border-color: rgba(255, 160, 80, 0.28);
+}
+
+.galaxy-map-root .gm-card-rows {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(220, 230, 250, 0.9);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.galaxy-map-root .gm-row {
+  display: grid;
+  grid-template-columns: minmax(0, 8.4em) minmax(0, 1fr);
+  gap: 6px 8px;
+  align-items: start;
+}
+
+.galaxy-map-root .gm-row-primary {
+  padding: 2px 0;
+}
+
+.galaxy-map-root .gm-row-note {
+  grid-template-columns: 1fr;
+  margin-top: 2px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(255, 120, 70, 0.12);
+}
+
+.galaxy-map-root .gm-row-note .gm-v {
+  text-align: center;
+  color: rgba(165, 184, 215, 0.68);
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.galaxy-map-root .gm-row-muted .gm-v {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--gm-muted);
+  font-weight: 700;
+}
+
+.galaxy-map-root .gm-k {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: rgba(255, 170, 120, 0.82);
+  font-size: 9px;
+  line-height: 1.35;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.galaxy-map-root .gm-row-ic {
+  flex-shrink: 0;
+  width: 1em;
+  text-align: center;
+  font-size: 8px;
+  line-height: 1;
+  opacity: 0.82;
+  color: rgba(255, 200, 140, 0.95);
+  text-shadow: 0 0 6px rgba(255, 120, 60, 0.35);
+}
+
+.galaxy-map-root .gm-v {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.galaxy-map-root .gm-v-wrap {
+  text-align: left;
+  font-variant-numeric: normal;
+  line-height: 1.35;
+}
+
+.galaxy-map-root .gm-row-center {
+  grid-template-columns: 1fr;
+}
+
+.galaxy-map-root .gm-row-center .gm-v {
+  text-align: center;
+}
+
+.galaxy-map-root .gm-v-locked-title {
+  font-size: 13px;
+  font-weight: 900;
+  color: rgba(255, 190, 140, 0.9);
+}
+
+.galaxy-map-root .gm-hint {
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: center;
+  color: rgba(170, 188, 215, 0.82);
+  padding: 2px 2px 0;
+}
+
+.galaxy-map-root .gm-card-desc {
+  margin: 0;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: rgba(175, 190, 215, 0.88);
+  flex-shrink: 0;
+}
+
+.galaxy-map-root .gm-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 4px;
+  flex-shrink: 0;
+}
+
+.galaxy-map-root .gm-go {
+  width: 100%;
+  padding: 11px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 120, 70, 0.45);
+  background: linear-gradient(180deg, rgba(255, 100, 60, 0.95), rgba(180, 40, 20, 0.92));
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  box-shadow:
+    0 0 20px rgba(255, 100, 50, 0.35),
+    inset 0 1px 0 rgba(255, 220, 180, 0.18);
+}
+
+.galaxy-map-root .gm-go-inner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.galaxy-map-root .gm-go-ic {
+  font-size: 10px;
+  line-height: 1;
+  opacity: 0.95;
+  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.4));
+}
+
+.galaxy-map-root .gm-go-txt {
+  line-height: 1.2;
+}
+
+.galaxy-map-root .gm-go-sub-inner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.galaxy-map-root .gm-go-sub-ic {
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0.88;
+}
+
+.galaxy-map-root .gm-go:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  filter: grayscale(0.4);
+  box-shadow: none;
+}
+
+.galaxy-map-root .gm-go-glow:not(:disabled):hover {
+  filter: brightness(1.08);
+}
+
+.galaxy-map-root .gm-go-sub {
+  width: 100%;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(100, 145, 210, 0.22);
+  background: rgba(8, 12, 24, 0.62);
+  color: rgba(170, 195, 230, 0.78);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.galaxy-map-root .gm-go-sub:hover {
+  border-color: rgba(255, 170, 110, 0.55);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(255, 100, 50, 0.12);
+}
+
+/* ----- フッター ----- */
+.galaxy-map-root .gm-footer {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px 9px;
+  border-top: 1px solid var(--gm-line);
+  background: linear-gradient(0deg, rgba(8, 12, 24, 0.95), rgba(12, 18, 32, 0.75));
+}
+
+.galaxy-map-root .gm-f-nav {
+  grid-column: 2;
+  justify-self: center;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.galaxy-map-root .gm-f-nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  box-sizing: border-box;
+  min-width: 56px;
+  min-height: 44px;
+  padding: 6px 8px 5px;
+  border: 1px solid rgba(255, 120, 70, 0.16);
+  border-radius: 4px;
+  clip-path: polygon(8% 0%, 92% 0%, 100% 100%, 0% 100%);
+  background: rgba(6, 10, 22, 0.26);
+  color: rgba(150, 168, 196, 0.74);
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  box-shadow: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.galaxy-map-root .gm-f-nav-btn:hover {
+  color: #fff;
+  background: rgba(255, 120, 70, 0.16);
+  border-color: rgba(255, 150, 90, 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 220, 180, 0.1),
+    0 0 14px rgba(255, 100, 50, 0.15);
+}
+
+.galaxy-map-root .gm-f-nav-ic {
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0.78;
+}
+
+.galaxy-map-root .gm-f-nav-lab {
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+}
+
+.galaxy-map-root .gm-f-crumb {
+  grid-column: 3;
+  justify-self: end;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: rgba(255, 200, 160, 0.95);
+  white-space: nowrap;
+}
+
+.galaxy-map-root .gm-f-crumb-glow {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  border: 2px solid rgba(255, 130, 70, 0.55);
+  border-top-color: rgba(255, 200, 140, 0.95);
+  background: radial-gradient(circle at 40% 35%, rgba(255, 220, 180, 0.35), transparent 62%);
+  box-shadow: 0 0 10px rgba(255, 120, 60, 0.55);
+  animation: gm-crumb-spin 5s linear infinite;
+}
+
+@keyframes gm-crumb-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.galaxy-map-root .gm-f-crumb-txt {
+  line-height: 1;
+  text-shadow: 0 0 10px rgba(255, 120, 80, 0.35);
+}
+
+/* トースト */
+.galaxy-map-root .gm-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 52px;
+  transform: translateX(-50%);
+  max-width: min(92%, 360px);
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(120, 200, 255, 0.25);
+  background: rgba(6, 12, 28, 0.92);
+  color: rgba(220, 230, 255, 0.95);
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  z-index: 20;
+  pointer-events: none;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+
+/* エリア情報モーダル */
+.galaxy-map-root .gm-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(3px);
+}
+
+.galaxy-map-root .gm-modal-panel {
+  width: min(100%, 380px);
+  max-height: min(78vh, 420px);
+  overflow: auto;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 140, 90, 0.28);
+  background: linear-gradient(165deg, rgba(18, 22, 38, 0.98), rgba(8, 12, 26, 0.98));
+  box-shadow:
+    0 0 0 1px rgba(100, 180, 255, 0.1),
+    0 20px 50px rgba(0, 0, 0, 0.55);
+}
+
+.galaxy-map-root .gm-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid rgba(100, 160, 255, 0.12);
+}
+
+.galaxy-map-root .gm-modal-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  color: rgba(255, 210, 175, 0.98);
+}
+
+.galaxy-map-root .gm-modal-close {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(220, 230, 255, 0.9);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.galaxy-map-root .gm-modal-close:hover {
+  background: rgba(255, 100, 70, 0.25);
+  color: #fff;
+}
+
+.galaxy-map-root .gm-modal-body {
+  padding: 12px 16px 16px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: rgba(200, 210, 230, 0.92);
+}
+
+.galaxy-map-root .gm-modal-lead {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 900;
+  color: #fff;
+}
+
+.galaxy-map-root .gm-modal-en {
+  font-size: 10px;
+  font-weight: 800;
+  color: rgba(255, 170, 120, 0.85);
+  letter-spacing: 0.08em;
+}
+
+.galaxy-map-root .gm-modal-p {
+  margin: 0 0 10px;
+}
+
+.galaxy-map-root .gm-modal-p.gm-modal-locked {
+  color: rgba(255, 200, 160, 0.88);
+}
+
+.galaxy-map-root .gm-modal-ul {
+  margin: 0;
+  padding-left: 1.1em;
+}
+
+.galaxy-map-root .gm-modal-ul li {
+  margin-bottom: 4px;
+}
+
+.galaxy-map-root .gm-modal-k {
+  color: rgba(255, 170, 120, 0.85);
+  font-weight: 800;
+  margin-right: 4px;
+}
+
+.galaxy-map-root .gm-hidden {
+  display: none !important;
+}

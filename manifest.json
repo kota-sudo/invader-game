@@ -1,10 +1,36 @@
 {
-  "name": "プラネットシューティング",
-  "short_name": "PlanetShoot",
-  "description": "スペースシューティングゲーム",
+  "name": "INVADER CORE — GALAXY WAR",
+  "short_name": "InvaderCore",
+  "description": "INVADER CORE — 火星戦域の縦横シューティング",
   "start_url": ".",
   "display": "fullscreen",
   "orientation": "landscape",
   "background_color": "#000000",
-  "theme_color": "#00ff44"
+  "theme_color": "#cc2200",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
 }

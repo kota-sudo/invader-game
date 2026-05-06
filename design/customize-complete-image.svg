@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="768" viewBox="0 0 1024 768">
+  <defs>
+    <linearGradient id="screenBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#070b18"/>
+      <stop offset="0.58" stop-color="#09060d"/>
+      <stop offset="1" stop-color="#150606"/>
+    </linearGradient>
+    <linearGradient id="loadoutBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#05354e" stop-opacity="0.94"/>
+      <stop offset="1" stop-color="#031024" stop-opacity="0.95"/>
+    </linearGradient>
+    <linearGradient id="deployBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff461e"/>
+      <stop offset="1" stop-color="#ba210c"/>
+    </linearGradient>
+    <linearGradient id="stageShade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#000000" stop-opacity="0.08"/>
+      <stop offset="0.46" stop-color="#000000" stop-opacity="0.14"/>
+      <stop offset="0.82" stop-color="#030610" stop-opacity="0.74"/>
+      <stop offset="1" stop-color="#030610" stop-opacity="0.92"/>
+    </linearGradient>
+    <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="tinyShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="1" flood-color="#000" flood-opacity="0.7"/>
+    </filter>
+    <pattern id="grid" width="64" height="64" patternUnits="userSpaceOnUse">
+      <path d="M64 0H0V64" fill="none" stroke="#5adcff" stroke-opacity="0.055"/>
+    </pattern>
+    <clipPath id="deployClip"><polygon points="320,655 704,655 752,704 704,753 320,753 272,704"/></clipPath>
+    <clipPath id="stageClip"><rect x="24" y="329" width="976" height="300" rx="14"/></clipPath>
+  </defs>
+
+  <rect width="1024" height="768" fill="url(#screenBg)"/>
+  <rect width="1024" height="768" fill="url(#grid)" opacity="0.85"/>
+  <circle cx="510" cy="150" r="230" fill="#ff5023" opacity="0.08"/>
+
+  <rect x="0" y="0" width="1024" height="52" fill="#050914" opacity="0.96"/>
+  <rect x="0" y="52" width="1024" height="47" fill="#050814" opacity="0.82"/>
+  <line x1="0" y1="52" x2="1024" y2="52" stroke="#5a96ff" stroke-opacity="0.22"/>
+  <line x1="0" y1="99" x2="1024" y2="99" stroke="#5a96ff" stroke-opacity="0.28"/>
+
+  <text x="24" y="31" font-family="Orbitron, sans-serif" font-size="22" font-weight="900" fill="#f6fbff">出撃準備</text>
+  <text x="25" y="44" font-family="Orbitron, sans-serif" font-size="10" font-weight="900" fill="#ff9a4a">DEPLOYMENT PREPARATION</text>
+
+  <g font-family="Orbitron, sans-serif" font-size="13" font-weight="900" text-anchor="middle">
+    <rect x="583" y="12" width="98" height="29" rx="7" fill="#071226" stroke="#5091dc" stroke-opacity="0.45"/>
+    <text x="632" y="31" fill="#cfe9ff">🧃 10/10</text>
+    <rect x="690" y="12" width="138" height="29" rx="7" fill="#071226" stroke="#5091dc" stroke-opacity="0.45"/>
+    <text x="759" y="31" fill="#ffd75c">● 955,849</text>
+    <rect x="840" y="12" width="94" height="29" rx="7" fill="#071226" stroke="#5091dc" stroke-opacity="0.45"/>
+    <text x="887" y="31" fill="#94d6ff">◆ 21</text>
+    <rect x="955" y="12" width="45" height="29" rx="7" fill="#071226" stroke="#5091dc" stroke-opacity="0.45"/>
+    <text x="978" y="31" fill="#dcecff">⚙</text>
+  </g>
+
+  <g font-family="Orbitron, sans-serif" font-weight="900" font-size="11" text-anchor="middle">
+    <g transform="translate(4 58)">
+      <rect width="165" height="35" rx="8" fill="#082244" stroke="#50c8ff" stroke-opacity="0.72"/>
+      <text x="82" y="16" fill="#eefaff">▣　部隊編成</text><text x="82" y="27" fill="#7890ad" font-size="8">LOADOUT</text>
+    </g>
+    <g transform="translate(176 58)"><rect width="165" height="35" rx="8" fill="#060c1c" stroke="#3c87dc" stroke-opacity="0.42"/><text x="82" y="16" fill="#c6d6ee">♟　イベント</text><text x="82" y="27" fill="#6f82a3" font-size="8">EVENT</text></g>
+    <g transform="translate(348 58)"><rect width="165" height="35" rx="8" fill="#060c1c" stroke="#3c87dc" stroke-opacity="0.42"/><text x="82" y="16" fill="#c6d6ee">▤　ガチャ</text><text x="82" y="27" fill="#6f82a3" font-size="8">GACHA</text></g>
+    <g transform="translate(520 58)"><rect width="165" height="35" rx="8" fill="#060c1c" stroke="#3c87dc" stroke-opacity="0.42"/><text x="82" y="16" fill="#c6d6ee">▲　強化</text><text x="82" y="27" fill="#6f82a3" font-size="8">UPGRADE</text></g>
+    <g transform="translate(692 58)"><rect width="165" height="35" rx="8" fill="#060c1c" stroke="#3c87dc" stroke-opacity="0.42"/><text x="82" y="16" fill="#c6d6ee">▥　ミッション</text><text x="82" y="27" fill="#6f82a3" font-size="8">MISSION</text></g>
+    <g transform="translate(864 58)"><rect width="156" height="35" rx="8" fill="#060c1c" stroke="#3c87dc" stroke-opacity="0.42"/><text x="78" y="16" fill="#c6d6ee">✜　ボス戦</text><text x="78" y="27" fill="#6f82a3" font-size="8">BOSS</text></g>
+  </g>
+
+  <rect x="24" y="111" width="976" height="168" rx="14" fill="url(#loadoutBg)" stroke="#37d2ff" stroke-opacity="0.56"/>
+  <text x="46" y="130" font-family="Orbitron, sans-serif" font-size="13" font-weight="900" fill="#b9ecff">出撃ユニット</text>
+  <text x="744" y="130" font-family="Orbitron, sans-serif" font-size="12" font-weight="900" fill="#d7e9ff">タップで編成 ▶</text>
+  <rect x="867" y="115" width="104" height="22" rx="7" fill="#0b1c3a" stroke="#5091dc" stroke-opacity="0.42"/><text x="919" y="130" text-anchor="middle" font-family="Orbitron, sans-serif" font-size="10" font-weight="900" fill="#d7e9ff">折りたたむ</text>
+
+  <rect x="45" y="151" width="102" height="102" rx="9" fill="#5f0b2f" stroke="#ff3c78"/>
+  <circle cx="96" cy="202" r="42" fill="#ff3c82" opacity="0.42"/>
+  <text x="96" y="218" text-anchor="middle" font-family="Orbitron, sans-serif" font-size="54" font-weight="900" fill="#ffa0c8">▣</text>
+  <rect x="160" y="150" width="42" height="18" rx="5" fill="#260b25" stroke="#ff3c82"/><text x="181" y="163" text-anchor="middle" font-family="Orbitron, sans-serif" font-size="10" font-weight="900" fill="#ff4fa2">LR</text>
+  <text x="216" y="167" font-family="Orbitron, sans-serif" font-size="20" font-weight="900" fill="#ffffff">竜王</text>
+  <text x="216" y="188" font-family="Orbitron, sans-serif" font-size="12" font-weight="900" fill="#d6e8ff">Lv.1</text>
+  <text x="216" y="207" font-family="Orbitron, sans-serif" font-size="12" font-weight="900" fill="#d6e8ff">TYPE : ATTACKER</text>
+  <rect x="170" y="242" width="150" height="32" rx="6" fill="#071226" stroke="#5091dc" stroke-opacity="0.5"/><text x="245" y="263" text-anchor="middle" font-family="Orbitron, sans-serif" font-size="11" font-weight="900" fill="#d7e9ff">機体詳細 ›</text>
+
+  <g font-family="Orbitron, sans-serif" font-size="13" font-weight="900" fill="#f2fbff">
+    <text x="380" y="190">HP</text><text x="600" y="190" text-anchor="end">230</text><rect x="380" y="195" width="220" height="10" fill="#03070d"/><rect x="380" y="195" width="220" height="10" fill="#20d47a"/>
+    <text x="380" y="222">ATK</text><text x="600" y="222" text-anchor="end">169</text><rect x="380" y="227" width="220" height="10" fill="#03070d"/><rect x="380" y="227" width="161" height="10" fill="#b76a38"/>
+    <text x="380" y="254">DEF</text><text x="600" y="254" text-anchor="end">45</text><rect x="380" y="259" width="220" height="10" fill="#03070d"/><rect x="380" y="259" width="44" height="10" fill="#4a95c8"/>
+  </g>
+
+  <rect x="650" y="151" width="334" height="134" rx="10" fill="#030a18" opacity="0.84" stroke="#5f96d2" stroke-opacity="0.32"/>
+  <text x="668" y="171" font-family="Orbitron, sans-serif" font-size="12" font-weight="900" fill="#c7eaff">装備サマリー</text>
+  <g transform="translate(663 188)" font-family="Orbitron, sans-serif" font-size="10" font-weight="900" text-anchor="middle">
+    <rect width="52" height="52" rx="7" fill="#100a1e" stroke="#ff3c78"/><text x="26" y="30" font-size="23" fill="#ff3f82">◆</text><text x="26" y="44" fill="#ff3f82">LR</text>
+    <rect x="62" width="52" height="52" rx="7" fill="#100a1e" stroke="#ff3c78"/><text x="88" y="30" font-size="23" fill="#ff3f82">◆</text><text x="88" y="44" fill="#ff3f82">LR</text>
+    <rect x="124" width="52" height="52" rx="7" fill="#0a1424" stroke="#46b4ff"/><text x="150" y="30" font-size="23" fill="#58bdff">◆</text><text x="150" y="44" fill="#58bdff">R</text>
+    <rect x="186" width="52" height="52" rx="7" fill="#080e18" stroke="#33445b"/><text x="212" y="31" font-size="24" fill="#6d7f99">◇</text>
+  </g>
+  <rect x="663" y="255" width="306" height="24" rx="6" fill="#1e0c10" opacity="0.72"/><text x="675" y="271" font-family="Orbitron, sans-serif" font-size="11" font-weight="900" fill="#a9bdd8">セット効果</text><text x="954" y="271" text-anchor="end" font-family="Orbitron, sans-serif" font-size="11" font-weight="900" fill="#ff9a4a">攻撃 +15%</text>
+
+  <g clip-path="url(#stageClip)">
+    <image href="../assets/customize-stage-mars.png" x="24" y="329" width="976" height="300" preserveAspectRatio="xMidYMid slice"/>
+    <rect x="24" y="329" width="976" height="300" fill="url(#stageShade)"/>
+  </g>
+  <rect x="24" y="329" width="976" height="300" rx="14" fill="none" stroke="#4bd2ff" stroke-opacity="0.58"/>
+  <text x="512" y="384" text-anchor="middle" font-family="Orbitron, sans-serif" font-size="54" font-weight="900" fill="#fff8f4" filter="url(#tinyShadow)">STAGE  1-1</text>
+  <text x="512" y="404" text-anchor="middle" font-family="Orbitron, sans-serif" font-size="13" font-weight="900" fill="#ff7148">火星 MARS</text>
+  <text x="512" y="426" text-anchor="middle" font-family="Orbitron, sans-serif" font-size="11" font-weight="900" fill="#f7eff0">ミッション条件　★ ノーダメージでクリア　★ 2回以上攻撃　★ 1ターン以内にクリア</text>
+
+  <rect x="202" y="446" width="620" height="58" rx="10" fill="#020e16" fill-opacity="0.78" stroke="#31f59b" stroke-opacity="0.64"/>
+  <text x="266" y="481" text-anchor="middle" font-family="Orbitron, sans-serif" font-size="18" font-weight="900" fill="#6dffbd">推奨OK</text>
+  <text x="346" y="471" font-family="Orbitron, sans-serif" font-size="12" font-weight="900" fill="#f2fbff">現在戦力は推奨値を大きく上回っています</text>
+  <text x="346" y="489" font-family="Orbitron, sans-serif" font-size="10" font-weight="900" fill="#a7bad5">現在戦力 478 / 推奨戦力 120 / 差分 +358</text>
+  <text x="783" y="480" text-anchor="end" font-family="Orbitron, sans-serif" font-size="28" font-weight="900" fill="#5cffc8">97%</text>
+  <text x="783" y="493" text-anchor="end" font-family="Orbitron, sans-serif" font-size="10" font-weight="900" fill="#a6ffe2">高確率</text>
+
+  <rect x="36" y="536" width="952" height="24" rx="5" fill="#03050c" fill-opacity="0.78" stroke="#ff6e46" stroke-opacity="0.18"/>
+  <text x="62" y="552" font-family="Orbitron, sans-serif" font-size="11" font-weight="900" fill="#9edcff">消費エナジー　🧃 1</text>
+  <text x="310" y="552" font-family="Orbitron, sans-serif" font-size="11" font-weight="900" fill="#ff875d">報酬プレビュー</text>
+  <text x="490" y="552" font-family="Orbitron, sans-serif" font-size="11" font-weight="900" fill="#ffd75c">● x120</text>
+  <text x="590" y="552" font-family="Orbitron, sans-serif" font-size="11" font-weight="900" fill="#f2fbff">経験値 x60</text>
+  <text x="750" y="552" font-family="Orbitron, sans-serif" font-size="11" font-weight="900" fill="#8fdcff">初回クリア報酬 ◆ x50</text>
+
+  <rect x="36" y="575" width="952" height="44" rx="9" fill="#06102a" fill-opacity="0.78" stroke="#3c78e6" stroke-opacity="0.38"/>
+  <text x="51" y="602" font-family="Orbitron, sans-serif" font-size="13" font-weight="900" fill="#f6fbff">出撃ステージ　1-1</text>
+  <rect x="846" y="585" width="124" height="24" rx="7" fill="#0b1c3a" stroke="#5091dc" stroke-opacity="0.42"/><text x="908" y="601" text-anchor="middle" font-family="Orbitron, sans-serif" font-size="10" font-weight="900" fill="#d7e9ff">ステージ変更 ›</text>
+
+  <rect x="449" y="616" width="126" height="30" rx="16" fill="#051c0e" stroke="#46ff96" filter="url(#softGlow)"/>
+  <text x="512" y="636" text-anchor="middle" font-family="Orbitron, sans-serif" font-size="12" font-weight="900" fill="#dcffe8">推奨OK！</text>
+  <polygon points="320,655 704,655 752,704 704,753 320,753 272,704" fill="url(#deployBg)" stroke="#ffd4c0" stroke-width="2"/>
+  <polygon points="329,664 695,664 739,704 695,744 329,744 285,704" fill="none" stroke="#ffd4c0" stroke-opacity="0.82" stroke-width="2"/>
+  <text x="512" y="701" text-anchor="middle" font-family="Orbitron, sans-serif" font-size="34" font-weight="900" fill="#ffffff" letter-spacing="6">出撃</text>
+  <text x="512" y="721" text-anchor="middle" font-family="Orbitron, sans-serif" font-size="13" font-weight="900" fill="#ffffff">DEPLOY</text>
+  <text x="512" y="738" text-anchor="middle" font-family="Orbitron, sans-serif" font-size="10" font-weight="900" fill="#ffe8d4">タップして開始</text>
+</svg>

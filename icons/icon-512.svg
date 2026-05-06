@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Invader Core">
+  <rect width="512" height="512" fill="#0a0a12"/>
+  <path fill="#cc2200" d="M256 64 L432 400 H80 Z"/>
+  <path fill="#ffcc66" d="M232 268h48v96H232z" opacity=".9"/>
+</svg>

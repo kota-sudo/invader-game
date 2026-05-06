@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="ja">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Customize Complete Mockup</title>
+  <style>
+    :root {
+      --bg: #050814;
+      --panel: rgba(5, 13, 30, 0.84);
+      --panel2: rgba(8, 20, 46, 0.78);
+      --line: rgba(90, 190, 255, 0.42);
+      --text: #f6fbff;
+      --muted: #a9bdd8;
+      --cyan: #5ddcff;
+      --green: #26f59b;
+      --red: #ff624d;
+      --orange: #ff9a4a;
+      --yellow: #ffd75c;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #171717;
+      font-family: Orbitron, "Zen Kaku Gothic New", system-ui, sans-serif;
+      color: var(--text);
+    }
+
+    .screen {
+      position: relative;
+      width: 1024px;
+      height: 768px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% 18%, rgba(255, 80, 35, 0.16), transparent 28%),
+        linear-gradient(180deg, #070b18 0%, #09060d 58%, #120505 100%);
+      border: 1px solid rgba(0, 255, 180, 0.55);
+    }
+
+    .screen::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(90, 220, 255, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(90, 220, 255, 0.05) 1px, transparent 1px);
+      background-size: 64px 64px;
+      opacity: 0.38;
+      pointer-events: none;
+    }
+
+    .topbar {
+      position: relative;
+      z-index: 1;
+      height: 52px;
+      padding: 10px 24px 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: linear-gradient(180deg, rgba(4, 7, 16, 0.96), rgba(5, 9, 20, 0.86));
+      border-bottom: 1px solid rgba(90, 150, 255, 0.22);
+    }
+
+    .title-main {
+      font-size: 22px;
+      font-weight: 950;
+      line-height: 1;
+      letter-spacing: 0.02em;
+    }
+
+    .title-sub {
+      margin-top: 2px;
+      color: var(--orange);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+    }
+
+    .resources {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .chip {
+      min-width: 92px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 1px solid rgba(80, 145, 220, 0.42);
+      border-radius: 7px;
+      background: rgba(5, 12, 28, 0.78);
+      color: #cfe9ff;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .chip.coin {
+      color: var(--yellow);
+      min-width: 132px;
+    }
+
+    .chip.gem {
+      color: #94d6ff;
+      min-width: 70px;
+    }
+
+    .gear {
+      min-width: 42px;
+      color: #dcecff;
+    }
+
+    .nav {
+      position: relative;
+      z-index: 1;
+      height: 47px;
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+      padding: 6px 4px;
+      background: rgba(5, 8, 20, 0.78);
+    }
+
+    .nav-item {
+      border: 1px solid rgba(60, 135, 220, 0.42);
+      border-radius: 8px;
+      background: rgba(6, 12, 28, 0.72);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: #c6d6ee;
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .nav-item.active {
+      border-color: rgba(80, 200, 255, 0.72);
+      background: rgba(8, 34, 68, 0.88);
+      color: #eefaff;
+    }
+
+    .nav small {
+      display: block;
+      color: #6f82a3;
+      font-size: 8px;
+      line-height: 1;
+    }
+
+    .content {
+      position: relative;
+      z-index: 1;
+      padding: 12px 24px 0;
+    }
+
+    .loadout {
+      height: 168px;
+      border: 1px solid rgba(55, 210, 255, 0.56);
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(3, 53, 78, 0.88), rgba(3, 16, 36, 0.92));
+      box-shadow: inset 0 0 18px rgba(0, 190, 255, 0.18);
+      padding: 14px 18px;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      color: #b9ecff;
+      font-size: 13px;
+      font-weight: 950;
+    }
+
+    .soft-button {
+      height: 24px;
+      padding: 0 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(80, 145, 220, 0.42);
+      border-radius: 7px;
+      background: rgba(11, 28, 58, 0.9);
+      color: #d7e9ff;
+      font-size: 10px;
+      font-weight: 900;
+    }
+
+    .loadout-body {
+      display: grid;
+      grid-template-columns: 118px 190px 1fr 334px;
+      gap: 22px;
+      align-items: center;
+    }
+
+    .unit-art {
+      width: 102px;
+      height: 102px;
+      border-radius: 9px;
+      border: 1px solid rgba(255, 48, 120, 0.9);
+      background:
+        radial-gradient(circle at 48% 44%, rgba(255, 60, 130, 0.88), rgba(130, 10, 55, 0.58) 48%, rgba(30, 8, 28, 0.92) 100%);
+      display: grid;
+      place-items: center;
+      color: rgba(255, 160, 200, 0.95);
+      font-size: 54px;
+    }
+
+    .unit-name {
+      font-size: 20px;
+      font-weight: 950;
+      margin-bottom: 5px;
+    }
+
+    .rarity {
+      display: inline-flex;
+      height: 18px;
+      min-width: 42px;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255, 60, 130, 0.9);
+      border-radius: 5px;
+      color: #ff4fa2;
+      font-size: 10px;
+      margin-right: 10px;
+    }
+
+    .unit-meta {
+      color: #d6e8ff;
+      font-size: 12px;
+      font-weight: 900;
+      line-height: 1.7;
+    }
+
+    .detail-btn {
+      margin-top: 16px;
+      width: 150px;
+    }
+
+    .stats {
+      padding: 4px 0;
+    }
+
+    .stat {
+      margin: 8px 0;
+    }
+
+    .stat-line {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 950;
+      color: #f2fbff;
+    }
+
+    .bar {
+      height: 10px;
+      margin-top: 3px;
+      background: #03070d;
+      overflow: hidden;
+      border-radius: 1px;
+    }
+
+    .bar span {
+      display: block;
+      height: 100%;
+    }
+
+    .hp span {
+      width: 100%;
+      background: #20d47a;
+    }
+
+    .atk span {
+      width: 73%;
+      background: #b76a38;
+    }
+
+    .def span {
+      width: 20%;
+      background: #4a95c8;
+    }
+
+    .equip-card {
+      align-self: stretch;
+      border: 1px solid rgba(95, 150, 210, 0.32);
+      border-radius: 10px;
+      background: rgba(3, 10, 24, 0.82);
+      padding: 12px;
+    }
+
+    .slots {
+      display: flex;
+      gap: 10px;
+      margin: 12px 0 18px;
+    }
+
+    .slot {
+      width: 52px;
+      height: 52px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255, 60, 120, 0.82);
+      border-radius: 7px;
+      background: rgba(16, 10, 30, 0.9);
+      color: #ff3f82;
+      font-weight: 950;
+    }
+
+    .slot.blue {
+      border-color: rgba(70, 180, 255, 0.8);
+      color: #58bdff;
+    }
+
+    .set {
+      height: 24px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-radius: 6px;
+      background: rgba(30, 12, 16, 0.72);
+      font-size: 11px;
+      font-weight: 900;
+      color: var(--muted);
+    }
+
+    .set strong {
+      color: var(--orange);
+    }
+
+    .stage {
+      position: relative;
+      margin-top: 12px;
+      height: 300px;
+      overflow: hidden;
+      border: 1px solid rgba(75, 210, 255, 0.58);
+      border-radius: 14px;
+      background: #080812;
+    }
+
+    .stage::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(180deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.16) 42%, rgba(3, 6, 16, 0.78) 86%, rgba(3, 6, 16, 0.92)),
+        url("../assets/customize-stage-mars.png") center/cover;
+      opacity: 0.98;
+    }
+
+    .stage-inner {
+      position: relative;
+      height: 100%;
+      padding: 16px 16px 10px;
+    }
+
+    .stage-title {
+      text-align: center;
+      margin-top: 0;
+    }
+
+    .stage-title .main {
+      font-size: 54px;
+      line-height: 0.92;
+      font-weight: 950;
+      letter-spacing: 0.04em;
+      color: #fff8f4;
+      text-shadow: 0 2px 0 rgba(90, 20, 20, 0.9);
+    }
+
+    .stage-title .sub {
+      margin-top: 2px;
+      color: #ff7148;
+      font-size: 13px;
+      font-weight: 950;
+    }
+
+    .missions {
+      color: #f7eff0;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 950;
+      line-height: 1.45;
+    }
+
+    .readiness {
+      width: 620px;
+      height: 58px;
+      margin: 18px auto 12px;
+      padding: 9px 18px;
+      display: grid;
+      grid-template-columns: 126px 1fr 88px;
+      align-items: center;
+      gap: 18px;
+      border: 1px solid rgba(49, 245, 155, 0.64);
+      border-radius: 10px;
+      background: rgba(2, 14, 22, 0.78);
+      box-shadow: inset 0 0 16px rgba(10, 255, 150, 0.1);
+      font-weight: 950;
+    }
+
+    .readiness .status {
+      color: #6dffbd;
+      font-size: 18px;
+      text-align: center;
+    }
+
+    .readiness .copy {
+      color: #f2fbff;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .readiness .copy span {
+      color: #a7bad5;
+      font-size: 10px;
+    }
+
+    .readiness .rate {
+      color: #5cffc8;
+      text-align: right;
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .readiness .rate small {
+      display: block;
+      margin-top: 2px;
+      color: #a6ffe2;
+      font-size: 10px;
+    }
+
+    .reward {
+      height: 24px;
+      margin: 0 12px;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1px solid rgba(255, 110, 70, 0.18);
+      border-radius: 5px;
+      background: rgba(3, 5, 12, 0.78);
+      font-size: 11px;
+      font-weight: 950;
+    }
+
+    .stage-select {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 10px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      border: 1px solid rgba(60, 120, 230, 0.38);
+      border-radius: 9px;
+      background: rgba(6, 16, 42, 0.78);
+      font-size: 13px;
+      font-weight: 950;
+    }
+
+    .deploy-wrap {
+      height: 124px;
+      display: grid;
+      place-items: center;
+    }
+
+    .ok-badge {
+      position: absolute;
+      left: 50%;
+      transform: translate(-50%, -58px);
+      width: 126px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(70, 255, 150, 0.92);
+      border-radius: 16px;
+      background: rgba(5, 28, 14, 0.96);
+      color: #dcffe8;
+      font-size: 12px;
+      font-weight: 950;
+      box-shadow: 0 0 18px rgba(42, 255, 142, 0.45);
+    }
+
+    .deploy {
+      width: 470px;
+      height: 96px;
+      clip-path: polygon(8% 0, 92% 0, 100% 50%, 92% 100%, 8% 100%, 0 50%);
+      border: 0;
+      background: linear-gradient(180deg, #ff411a, #bc220d);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-weight: 950;
+      box-shadow: 0 0 24px rgba(255, 70, 24, 0.3);
+    }
+
+    .deploy .jp {
+      font-size: 34px;
+      letter-spacing: 0.18em;
+      line-height: 1;
+    }
+
+    .deploy .en {
+      margin-top: 7px;
+      font-size: 13px;
+    }
+
+    .deploy .hint {
+      margin-top: 3px;
+      font-size: 10px;
+      color: #ffe8d4;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="screen">
+    <header class="topbar">
+      <div>
+        <div class="title-main">出撃準備</div>
+        <div class="title-sub">DEPLOYMENT PREPARATION</div>
+      </div>
+      <div class="resources">
+        <div class="chip">🧃 10/10</div>
+        <div class="chip coin">● 955,849</div>
+        <div class="chip gem">◆ 21</div>
+        <div class="chip gear">⚙</div>
+      </div>
+    </header>
+
+    <nav class="nav">
+      <div class="nav-item active">▣ <span>部隊編成<small>LOADOUT</small></span></div>
+      <div class="nav-item">♟ <span>イベント<small>EVENT</small></span></div>
+      <div class="nav-item">▤ <span>ガチャ<small>GACHA</small></span></div>
+      <div class="nav-item">▲ <span>強化<small>UPGRADE</small></span></div>
+      <div class="nav-item">▥ <span>ミッション<small>MISSION</small></span></div>
+      <div class="nav-item">✜ <span>ボス戦<small>BOSS</small></span></div>
+    </nav>
+
+    <section class="content">
+      <section class="loadout">
+        <div class="section-head"><span>出撃ユニット</span><span>タップで編成 ▶ <b class="soft-button">折りたたむ</b></span></div>
+        <div class="loadout-body">
+          <div class="unit-art">▣</div>
+          <div>
+            <div><span class="rarity">LR</span><span class="unit-name">竜王</span></div>
+            <div class="unit-meta">Lv.1<br>TYPE : ATTACKER</div>
+            <div class="soft-button detail-btn">機体詳細 ›</div>
+          </div>
+          <div class="stats">
+            <div class="stat hp">
+              <div class="stat-line"><span>HP</span><span>230</span></div>
+              <div class="bar"><span></span></div>
+            </div>
+            <div class="stat atk">
+              <div class="stat-line"><span>ATK</span><span>169</span></div>
+              <div class="bar"><span></span></div>
+            </div>
+            <div class="stat def">
+              <div class="stat-line"><span>DEF</span><span>45</span></div>
+              <div class="bar"><span></span></div>
+            </div>
+          </div>
+          <div class="equip-card">
+            <div class="section-head" style="margin:0;color:#c7eaff">装備サマリー</div>
+            <div class="slots">
+              <div class="slot">◆<small>LR</small></div>
+              <div class="slot">◆<small>LR</small></div>
+              <div class="slot blue">◆<small>R</small></div>
+              <div class="slot" style="border-color:#33445b;color:#6d7f99">◇</div>
+            </div>
+            <div class="set"><span>セット効果</span><strong>攻撃 +15%</strong></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="stage">
+        <div class="stage-inner">
+          <div class="stage-title">
+            <div class="main">STAGE&nbsp; 1-1</div>
+            <div class="sub">火星 MARS</div>
+          </div>
+          <div class="missions">ミッション条件<br>★ ノーダメージでクリア　　★ 2回以上攻撃　　★ 1ターン以内にクリア</div>
+          <div class="readiness">
+            <div class="status">推奨OK</div>
+            <div class="copy">現在戦力は推奨値を大きく上回っています<br><span>現在戦力 478 / 推奨戦力 120 / 差分 +358</span></div>
+            <div class="rate">97%<small>高確率</small></div>
+          </div>
+          <div class="reward"><span style="color:#9edcff">消費エナジー　🧃 1</span><span
+              style="color:#ff875d">報酬プレビュー</span><span style="color:#ffd75c">● x120</span><span>経験値 x60</span><span
+              style="color:#8fdcff">初回クリア報酬 ◆ x50</span></div>
+          <div class="stage-select"><span>出撃ステージ&nbsp; 1-1</span><span class="soft-button">ステージ変更 ›</span></div>
+        </div>
+      </section>
+
+      <section class="deploy-wrap">
+        <div class="ok-badge">推奨OK！</div>
+        <div class="deploy">
+          <div class="jp">出 撃</div>
+          <div class="en">DEPLOY</div>
+          <div class="hint">タップして開始</div>
+        </div>
+      </section>
+    </section>
+  </main>
+</body>
+
+</html>
