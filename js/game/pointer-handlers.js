@@ -176,10 +176,6 @@ export function registerPointerInput(canvas, deps) {
           game.continueNoStarsThisRun = false;
           showMessage(null); startBGM(); game.stage = game.startStage; initStars(); updateHUD(); initStage(); game.state = 'playing';
           return;
-        } else if (gh.type === 'title') {
-          game.continueNoStarsThisRun = false;
-          showMessage(null); startBGM(); game.customizeCursor = 0; game.bossRushModeActive = false; game.endlessModeActive = false; game.state = 'customize';
-          return;
         } else if (gh.type === 'boss_retry' && game.selectedBossAbility) {
           showMessage(null); game.bossRushModeActive = true; game.endlessModeActive = false; startGame(); return;
         }

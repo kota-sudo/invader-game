@@ -15,15 +15,12 @@ export function formatStageForHud(stageNum) {
  */
 export function buildGameOverAccessibilityMessage(game, { wasRecord }) {
   const gemOk = (game.gems || 0) >= CONTINUE_GEM_COST;
-  const st = formatStageForHud(game.startStage);
   const lines = ['ゲームオーバー', `スコア: ${game.score | 0}`];
   if (wasRecord) lines.push('★ NEW RECORD! ★');
-  lines.push('', '【タップで選択 · キーボード可】');
-  lines.push(`タイトルへ — SPACE`);
-  lines.push(`即リトライ — STAGE ${st} 先頭 · R / ↑`);
-  if (gemOk) lines.push(`コンティニュー 💎${CONTINUE_GEM_COST} — ★更新なし・同ステージ先頭 · C`);
-  else lines.push(`コンティニュー 💎${CONTINUE_GEM_COST} — ジェム不足`);
-  if (game.selectedBossAbility) lines.push('同ボス再挑戦 — B（画面上のボタンでも可）');
+  lines.push('', 'ボタンまたはキー: リトライ R / ↑、コンティニュー C');
+  if (!gemOk) lines.push(`コンティニューはジェム 💎${CONTINUE_GEM_COST} が必要です`);
+  if (game.selectedBossAbility) lines.push('同ボス再挑戦: B');
+  lines.push('（出撃準備へ戻る: SPACE）');
   return lines.join('\n');
 }
 
@@ -38,11 +35,8 @@ export function getGameOverOverlayCopy(game) {
     showBossRetry,
     scoreText: `スコア: ${game.score | 0}`,
     stageLine: `STAGE ${formatStageForHud(game.stage)}`,
-    retrySub: `STAGE ${formatStageForHud(game.startStage)} 先頭 · R / ↑`,
     continueMain: `コンティニュー 💎${CONTINUE_GEM_COST}`,
-    continueSub: gemOk ? '★更新なし · C' : 'ジェム不足',
     bossRetryMain: '同ボス再挑戦',
-    bossRetrySub: 'B',
-    footer: 'タップで選択（キーボードでも操作可）',
+    footer: 'タップで選択',
   };
 }
