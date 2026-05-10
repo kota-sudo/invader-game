@@ -116,6 +116,7 @@ import {
   stageSelectFuelLaunchOk,
   formatFuelMmSs,
 } from './js/game/fuel.js';
+import { formatStageForHud, buildGameOverAccessibilityMessage } from './js/game/gameover-copy.js';
 import {
   initAudio,
   playSound,
@@ -367,10 +368,7 @@ function getTheme() {
 }
 
 function formatStageId(stageNum) {
-  const s = Math.max(1, Math.floor(stageNum || 1));
-  const w = Math.floor((s - 1) / 10) + 1;
-  const local = ((s - 1) % 10) + 1;
-  return `${w}-${local}`;
+  return formatStageForHud(stageNum);
 }
 
 const hudController = createHudController({ game, stageEl, formatStageId, syncFuel, FUEL_CAP, formatFuelMmSs, fuelNextRegenMs });
@@ -713,7 +711,7 @@ function initStage() {
   const _dims = getShipDims();
   game.player = { x: W / 2 - _dims.w / 2, y: H - 100, w: _dims.w, h: _dims.h, invincibleTimer: 0, _valkyrieUsed: false };
   game.barriers = [];
-  stageEl.textContent = game.stage;
+  stageEl.textContent = formatStageId(game.stage);
   game.stageStats = { hits: 0, maxCombo: 0, kills: 0 };
   game.bossRushCount = 0; game.bossRushDelay = 0; game.escortShip = null;
   game.survivalTimer = SURVIVAL_DURATION; game.minionSpawnTimer = 0;
@@ -1367,17 +1365,14 @@ function tryContinueFromGameOver() {
 
 function triggerGameOver() {
   const wasRecord = game.score > 0 && game.score >= (game.hiScores[0] || 0);
+  game.gameOverWasRecord = wasRecord;
   if (game.score > 0) saveScore(game.score);
   if (game.bossRushModeActive) pushWeeklyLocalScore('boss_rush', game.score);
   else if (game.endlessModeActive) pushWeeklyLocalScore('endless', game.score);
-  const nr = wasRecord ? '\n★ NEW RECORD! ★' : '';
   game.playerStats.hp = 0; updateHUD();
   game.state = 'gameover'; stopBGM();
   triggerFlash(255, 0, 0, 0.6); playSound('gameover'); vibrate([200, 100, 200]);
-  const _bRetry = game.selectedBossAbility ? '\nB: 同ボス再挑戦' : '';
-  const _gemOk = (game.gems || 0) >= CONTINUE_GEM_COST;
-  const _cLine = _gemOk ? `\nC / タップ: 💎${CONTINUE_GEM_COST} コンティニュー（★更新なし・同ステージ先頭）` : `\nC: 💎${CONTINUE_GEM_COST} コンティニュー（ジェム不足）`;
-  showMessage(`ゲームオーバー\nスコア: ${game.score}${nr}\nSPACE: タイトルへ  /  R: 即リトライ${_bRetry}${_cLine}`);
+  showMessage(buildGameOverAccessibilityMessage(game, { wasRecord }));
 }
 
 // ===== メイン更新（update-tick + game-store）=====

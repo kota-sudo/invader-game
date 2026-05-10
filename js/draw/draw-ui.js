@@ -17,6 +17,7 @@ const TITLE_STATUS_OK = '#3dff9a';
 /** 仕様⑧：赤粒子は最大 30 のみループ */
 const TITLE_RISE_PARTICLE_N = 30;
 import { EXP_TABLE, STAGE_TYPE_LABELS, WEAPON_COLOR, WEAPON_LABEL, getStageBattleBackground } from '../game-data.js';
+import { getGameOverOverlayCopy } from '../game/gameover-copy.js';
 
 let drawDeps;
 let ctx;
@@ -249,6 +250,7 @@ function drawGameOverOverlay() {
   const ctx = drawDeps.ctx;
   game._gameoverHits = [];
   const cx = W / 2;
+  const copy = getGameOverOverlayCopy(game);
 
   // Background image (full-bleed)
   const bgSrc = './assets/ui/gameover-bg-mars.png';
@@ -277,11 +279,11 @@ function drawGameOverOverlay() {
   ctx.fillRect(0, 0, W, H);
   ctx.restore();
 
-  // Main panel
-  const pw = Math.min(520, Math.max(360, W * 0.62));
-  const ph = Math.min(420, Math.max(320, H * 0.56));
+  const touchBoost = W < 560 ? 1 : 0;
+  const pw = Math.min(520, Math.max(340, W * 0.66));
+  const ph = Math.min(460, Math.max(copy.wasRecord ? 348 : 320, H * 0.56 + touchBoost * 24));
   const px = Math.floor(cx - pw / 2);
-  const py = Math.floor(H * 0.18);
+  const py = Math.floor(H * 0.14);
   const r = 16;
   const accent = '#44ff88';
   const hoverId = game.hoveredBtn?.id || '';
@@ -298,7 +300,6 @@ function drawGameOverOverlay() {
   ctx.stroke();
   ctx.shadowBlur = 0;
 
-  // Header strip
   const hg = ctx.createLinearGradient(px, py, px, py + 56);
   hg.addColorStop(0, 'rgba(60, 255, 140, 0.16)');
   hg.addColorStop(1, 'rgba(60, 255, 140, 0)');
@@ -315,20 +316,26 @@ function drawGameOverOverlay() {
   ctx.fillText('ゲームオーバー', cx, py + 44);
   ctx.shadowBlur = 0;
 
-  // Stats
+  let statY = py + 88;
   ctx.fillStyle = 'rgba(220, 245, 255, 0.86)';
   ctx.font = '900 16px Orbitron,Courier New';
-  ctx.fillText(`スコア: ${game.score | 0}`, cx, py + 96);
+  ctx.fillText(copy.scoreText, cx, statY);
+  statY += 26;
+  if (copy.wasRecord) {
+    ctx.fillStyle = 'rgba(255, 220, 80, 0.95)';
+    ctx.font = '900 13px Orbitron,Courier New';
+    ctx.fillText('★ NEW RECORD! ★', cx, statY);
+    statY += 22;
+  }
   ctx.fillStyle = 'rgba(190, 220, 255, 0.55)';
   ctx.font = '900 13px Orbitron,Courier New';
-  ctx.fillText(`STAGE ${game.stage}`, cx, py + 120);
+  ctx.fillText(copy.stageLine, cx, statY);
 
-  // Actions
-  const bw = Math.min(360, pw - 80);
-  const bh = 48;
+  const bw = Math.min(touchBoost ? 400 : 380, pw - 48);
+  const bh = 48 + touchBoost * 10;
   const bx = Math.floor(cx - bw / 2);
-  const y1 = py + 156;
-  const gap = 14;
+  const gap = 12 + touchBoost * 4;
+  const y1 = statY + 36;
 
   const btn = (y, label, sub, type, col, disabled = false) => {
     const hovered = hoverId === `go_${type}` && !disabled;
@@ -350,24 +357,23 @@ function drawGameOverOverlay() {
     ctx.fillStyle = disabled ? 'rgba(220, 240, 255, 0.35)' : '#eaf6ff';
     ctx.font = '900 15px Orbitron,Courier New';
     ctx.textAlign = 'center';
-    ctx.fillText(label, cx, y + 30);
+    ctx.fillText(label, cx, y + (bh <= 50 ? 30 : 34));
     if (sub) {
       ctx.fillStyle = disabled ? 'rgba(180, 210, 255, 0.28)' : 'rgba(180, 210, 255, 0.55)';
       ctx.font = '900 11px Orbitron,Courier New';
-      ctx.fillText(sub, cx, y + 44);
+      ctx.fillText(sub, cx, y + (bh <= 50 ? 44 : 50));
     }
     ctx.restore();
     game._gameoverHits.push({ type, x: bx, y, w: bw, h: bh, disabled });
   };
 
-  btn(y1, 'SPACE: タイトル', '出撃準備へ戻る', 'title', '#44ff88');
-  btn(y1 + (bh + gap), 'R: 即リトライ', `STAGE ${game.startStage} 先頭から`, 'retry', '#88ccff');
-  btn(y1 + (bh + gap) * 2, 'C: コンティニュー', '💎 10  /  ★更新なし', 'continue', '#ffcc66', false);
+  btn(y1, 'タイトルへ', 'SPACE', 'title', '#44ff88');
+  btn(y1 + (bh + gap), '即リトライ', copy.retrySub, 'retry', '#88ccff');
+  btn(y1 + (bh + gap) * 2, copy.continueMain, copy.continueSub, 'continue', '#ffcc66', !copy.gemOk);
 
-  // Footer hint
   ctx.fillStyle = 'rgba(150, 185, 220, 0.40)';
   ctx.font = '900 11px Orbitron,Courier New';
-  ctx.fillText('クリックでも選べます', cx, py + ph - 18);
+  ctx.fillText(copy.footer, cx, py + ph - 16);
   ctx.textAlign = 'left';
   ctx.restore();
 }

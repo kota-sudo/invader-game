@@ -25,11 +25,17 @@
   </div>
   <div id="game-container">
     <div id="hud">
-      <span>STAGE <span id="stage">1</span></span>
-      <span>HP <span id="lives">100/100</span></span>
-      <span>FUEL <span id="fuel">10/10</span> <span id="fuel-next" style="font-size:0.8em;opacity:0.65;"></span></span>
-      <span>● <span id="coins">0</span></span>
-      <span>💎 <span id="gems">0</span></span>
+      <div class="hud-row hud-row-primary">
+        <span class="hud-cell">STAGE <span id="stage">1-1</span></span>
+        <span class="hud-cell">HP <span id="lives">100/100</span></span>
+        <span class="hud-cell hud-score-wrap">SCORE <span id="score">0</span></span>
+      </div>
+      <div class="hud-row hud-row-secondary">
+        <span class="hud-cell hud-fuel-cell">FUEL <span id="fuel">10/10</span> <span id="fuel-next" class="hud-fuel-next"></span></span>
+        <span class="hud-cell">● <span id="coins">0</span></span>
+        <span class="hud-cell">💎 <span id="gems">0</span></span>
+        <span class="hud-cell hud-status-cell" id="hud-status" aria-live="polite"></span>
+      </div>
     </div>
     <div class="canvas-wrap">
     <canvas id="canvas" width="800" height="600" role="img" aria-label="INVADER CORE ゲーム画面"></canvas>

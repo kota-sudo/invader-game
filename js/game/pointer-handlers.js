@@ -96,7 +96,7 @@ export function registerPointerInput(canvas, deps) {
       }
     }
     if (!hover && game.state === 'gameover' && Array.isArray(game._gameoverHits)) {
-      const tp = 6;
+      const tp = 14;
       const gh = game._gameoverHits.find(h => !h.disabled && mx >= h.x - tp && mx <= h.x + h.w + tp && my >= h.y - tp && my <= h.y + h.h + tp);
       if (gh) hover = { id: `go_${gh.type}`, ...gh };
     }
@@ -168,7 +168,7 @@ export function registerPointerInput(canvas, deps) {
     }
 
     if (game.state === 'gameover' && Array.isArray(game._gameoverHits)) {
-      const tp = 6;
+      const tp = 14;
       const gh = game._gameoverHits.find(h => !h.disabled && mx >= h.x - tp && mx <= h.x + h.w + tp && my >= h.y - tp && my <= h.y + h.h + tp);
       if (gh) {
         if (gh.type === 'continue') { if (tryContinueFromGameOver()) return; }
