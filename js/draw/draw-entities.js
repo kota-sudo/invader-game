@@ -63,6 +63,48 @@ function tryDrawDragonLordSprite(ctx) {
   }
 }
 
+/** バリア：矩形ではなく円形グラデ＋細い六角リング（デバッグ枠に見えないよう輪郭は円滑にフェード） */
+function drawPlayerBarrierField(ctx, cx, cy, bw, bh, frameCount) {
+  const base = Math.max(bw, bh) * 0.52 + 14;
+  const pulse = 1 + Math.sin(frameCount * 0.065) * 0.038;
+  const outerR = base * pulse;
+
+  ctx.save();
+
+  const g = ctx.createRadialGradient(cx, cy - 2, Math.max(6, base * 0.1), cx, cy, outerR);
+  g.addColorStop(0, 'rgba(200,252,255,0.11)');
+  g.addColorStop(0.38, 'rgba(70,215,255,0.055)');
+  g.addColorStop(0.72, 'rgba(40,170,230,0.028)');
+  g.addColorStop(1, 'rgba(0,90,160,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(cx, cy, outerR, 0, Math.PI * 2);
+  ctx.fill();
+
+  const hexStroke = (r, rot, alpha, lineW, blur) => {
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = rot + (i / 6) * Math.PI * 2 - Math.PI / 2;
+      const x = cx + Math.cos(a) * r;
+      const y = cy + Math.sin(a) * r;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = `rgba(160,238,255,${alpha})`;
+    ctx.lineWidth = lineW;
+    ctx.shadowColor = `rgba(0,230,255,${Math.min(0.55, alpha + 0.15)})`;
+    ctx.shadowBlur = blur;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  };
+
+  hexStroke(outerR * 0.91, frameCount * 0.0115, 0.30, 1.15, 5);
+  hexStroke(outerR * 0.79, -frameCount * 0.009 + Math.PI / 7, 0.20, 0.85, 3);
+
+  ctx.restore();
+}
+
 function drawPlayer(){
   const ctx = drawDeps.ctx;
   if (!game.player) return;
@@ -73,23 +115,12 @@ function drawPlayer(){
     drawShipShape(ctx, game.player.x, game.player.y, game.player.w, game.player.h);
   }
   // ダッシュ中の残像はdashTrailで描画
-  // シールド（四角枠は使わず、自機周りの柔らかいシアン光）
-  if(game.playerShield){
+  const barrierOn = game.playerShield
+    || (game.chaosBuff?.type === 'shield' && (game.chaosBuff.timer || 0) > 0);
+  if (barrierOn) {
     const cx = game.player.x + game.player.w / 2;
     const cy = game.player.y + game.player.h / 2;
-    const r0 = Math.min(game.player.w, game.player.h) * 0.35;
-    const r1 = Math.max(game.player.w, game.player.h) * 0.95;
-    ctx.save();
-    const gr = ctx.createRadialGradient(cx, cy - 2, r0 * 0.3, cx, cy, r1);
-    gr.addColorStop(0, 'rgba(0,255,255,0.14)');
-    gr.addColorStop(0.55, 'rgba(0,220,255,0.09)');
-    gr.addColorStop(1, 'rgba(0,180,255,0)');
-    ctx.fillStyle = gr;
-    ctx.shadowColor = 'rgba(0,255,255,0.42)';
-    ctx.shadowBlur = 16;
-    ctx.fillRect(game.player.x - 18, game.player.y - 18, game.player.w + 36, game.player.h + 36);
-    ctx.shadowBlur = 0;
-    ctx.restore();
+    drawPlayerBarrierField(ctx, cx, cy, game.player.w, game.player.h, game.frameCount);
   }
 }
 
