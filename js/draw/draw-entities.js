@@ -105,22 +105,79 @@ function drawPlayerBarrierField(ctx, cx, cy, bw, bh, frameCount) {
   ctx.restore();
 }
 
+/** 機体の手前・赤黒背景でも位置が一目で分かるように（影は機体より先に描く） */
+function drawPlayerGroundShadow(ctx, p) {
+  const cx = p.x + p.w / 2;
+  const foot = p.y + p.h + 2;
+  ctx.save();
+  ctx.globalAlpha = 0.42;
+  const rx = p.w * 0.44;
+  const ry = 12;
+  const g = ctx.createRadialGradient(cx, foot, 1, cx, foot, Math.max(rx, ry) * 1.15);
+  g.addColorStop(0, 'rgba(10,4,18,0.72)');
+  g.addColorStop(0.45, 'rgba(6,2,12,0.38)');
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.ellipse(cx, foot, rx, ry, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+/** シアン縁取り＋中心コア（バリアとは別：常時の視認性用） */
+function drawPlayerVisibilityAccent(ctx, p, frameCount) {
+  const cx = p.x + p.w / 2;
+  const cy = p.y + p.h / 2;
+  const pad = 2;
+  const pulse = 0.82 + Math.sin(frameCount * 0.11) * 0.18;
+  ctx.save();
+
+  ctx.strokeStyle = `rgba(110,235,255,${0.42 + pulse * 0.12})`;
+  ctx.lineWidth = 1.15;
+  ctx.shadowColor = 'rgba(0,210,255,0.55)';
+  ctx.shadowBlur = 9;
+  ctx.beginPath();
+  ctx.roundRect(p.x - pad, p.y - pad, p.w + pad * 2, p.h + pad * 2, 5);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  ctx.globalCompositeOperation = 'lighter';
+  const cr = Math.min(p.w, p.h) * 0.15;
+  const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, cr * 2.6);
+  cg.addColorStop(0, `rgba(255,255,255,${0.26 * pulse})`);
+  cg.addColorStop(0.22, `rgba(200,252,255,${0.18 * pulse})`);
+  cg.addColorStop(0.55, `rgba(100,220,255,${0.08 * pulse})`);
+  cg.addColorStop(1, 'rgba(40,180,255,0)');
+  ctx.fillStyle = cg;
+  ctx.beginPath();
+  ctx.arc(cx, cy, cr * 2.6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.restore();
+}
+
 function drawPlayer(){
   const ctx = drawDeps.ctx;
   if (!game.player) return;
   if(game.powerupActive==='invincible'||game.player.invincibleTimer>0){
     if(Math.floor(game.frameCount/4)%2===0) return;
   }
-  if (!tryDrawDragonLordSprite(ctx)) {
-    drawShipShape(ctx, game.player.x, game.player.y, game.player.w, game.player.h);
+  const p = game.player;
+  const isDragonLord = game.playerLoadout?.charId === DRAGON_LORD_CHAR_ID;
+  if (!isDragonLord) drawPlayerGroundShadow(ctx, p);
+
+  const drewDragon = tryDrawDragonLordSprite(ctx);
+  if (!drewDragon) {
+    drawShipShape(ctx, p.x, p.y, p.w, p.h);
   }
-  // ダッシュ中の残像はdashTrailで描画
+  drawPlayerVisibilityAccent(ctx, p, game.frameCount);
+
   const barrierOn = game.playerShield
     || (game.chaosBuff?.type === 'shield' && (game.chaosBuff.timer || 0) > 0);
   if (barrierOn) {
-    const cx = game.player.x + game.player.w / 2;
-    const cy = game.player.y + game.player.h / 2;
-    drawPlayerBarrierField(ctx, cx, cy, game.player.w, game.player.h, game.frameCount);
+    const cx = p.x + p.w / 2;
+    const cy = p.y + p.h / 2;
+    drawPlayerBarrierField(ctx, cx, cy, p.w, p.h, game.frameCount);
   }
 }
 
