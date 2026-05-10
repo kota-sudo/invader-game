@@ -17,7 +17,7 @@ const TITLE_STATUS_OK = '#3dff9a';
 /** 仕様⑧：赤粒子は最大 30 のみループ */
 const TITLE_RISE_PARTICLE_N = 30;
 import { EXP_TABLE, STAGE_TYPE_LABELS, WEAPON_COLOR, WEAPON_LABEL, getStageBattleBackground } from '../game-data.js';
-import { getGameOverOverlayCopy } from '../game/gameover-copy.js';
+import { formatStageForHud, getGameOverOverlayCopy } from '../game/gameover-copy.js';
 
 let drawDeps;
 let ctx;
@@ -173,76 +173,155 @@ function drawUIButtons() {
   });
 }
 
+/** 上部 HUD と同系のネオン・Orbitron でセグメント描画 */
+function drawPauseNeonLine(ctx, cx, y, segments) {
+  ctx.save();
+  ctx.font = 'bold 11px Orbitron,Courier New';
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  let tw = 0;
+  for (const [txt] of segments) tw += ctx.measureText(txt).width;
+  let x = cx - tw / 2;
+  for (const [txt, fill, glow] of segments) {
+    ctx.shadowColor = glow;
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = fill;
+    ctx.fillText(txt, x, y);
+    ctx.shadowBlur = 0;
+    x += ctx.measureText(txt).width;
+  }
+  ctx.restore();
+}
+
 function drawPauseOverlay() {
   const ctx = drawDeps.ctx;
-  ctx.fillStyle = 'rgba(0,0,0,0.78)'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(0,0,0,0.82)';
+  ctx.fillRect(0, 0, W, H);
   const cx = W / 2;
-  const pAccent = getTheme().accent;
-  ctx.shadowColor = pAccent; ctx.shadowBlur = 30;
-  ctx.fillStyle = '#fff'; ctx.font = 'bold 40px Orbitron,Courier New'; ctx.textAlign = 'center';
-  ctx.fillText('PAUSED', cx, 120); ctx.shadowBlur = 0;
-  ctx.fillStyle = '#556'; ctx.font = '11px Orbitron,"Hiragino Sans","Yu Gothic",sans-serif';
-  ctx.fillText('再開: 「続ける」または ESC', cx, 148);
+
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.font = '900 42px Orbitron,Courier New';
+  ctx.fillStyle = '#f4fff8';
+  ctx.shadowColor = '#44ff88';
+  ctx.shadowBlur = 26;
+  ctx.fillText('PAUSED', cx, 118);
+  ctx.shadowBlur = 0;
+
+  ctx.font = 'bold 12px Orbitron,Courier New';
+  ctx.fillStyle = '#7fff7f';
+  ctx.shadowColor = 'rgba(0,255,80,0.55)';
+  ctx.shadowBlur = 10;
+  ctx.fillText('再開:「続ける」または ESC', cx, 150);
+  ctx.shadowBlur = 0;
+  ctx.restore();
 
   const hpRatio = game.playerStats?.maxHp > 0 ? game.playerStats.hp / game.playerStats.maxHp : 1;
   const hpColor = hpRatio > 0.5 ? '#00ff88' : hpRatio > 0.25 ? '#ffaa00' : '#ff3333';
-  ctx.fillStyle = '#111'; ctx.beginPath(); ctx.roundRect(cx - 160, 168, 320, 14, 4); ctx.fill();
-  ctx.fillStyle = hpColor; ctx.shadowColor = hpColor; ctx.shadowBlur = 8;
-  ctx.beginPath(); ctx.roundRect(cx - 160, 168, 320 * Math.max(0, Math.min(1, hpRatio)), 14, 4); ctx.fill();
+  ctx.fillStyle = 'rgba(8,14,8,0.92)';
+  ctx.strokeStyle = 'rgba(0,255,80,0.35)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(cx - 160, 168, 320, 14, 4);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = hpColor;
+  ctx.shadowColor = hpColor;
+  ctx.shadowBlur = 12;
+  ctx.beginPath();
+  ctx.roundRect(cx - 160, 168, 320 * Math.max(0, Math.min(1, hpRatio)), 14, 4);
+  ctx.fill();
   ctx.shadowBlur = 0;
-  ctx.fillStyle = '#ccc'; ctx.font = '11px Orbitron,Courier New'; ctx.textAlign = 'center';
-  ctx.fillText(`HP  ${game.playerStats?.hp ?? 0} / ${game.playerStats?.maxHp ?? 0}`, cx, 194);
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 13px Orbitron,Courier New';
+  ctx.fillStyle = '#00ff88';
+  ctx.shadowColor = 'rgba(0,255,136,0.65)';
+  ctx.shadowBlur = 8;
+  ctx.fillText(`HP  ${game.playerStats?.hp ?? 0} / ${game.playerStats?.maxHp ?? 0}`, cx, 198);
+  ctx.shadowBlur = 0;
 
   const stats = [
-    { l: 'ATK', v: `×${(game.playerStats?.atk ?? 1).toFixed(2)}`, c: '#ff8844' },
-    { l: 'DEF', v: `${game.playerStats?.def ?? 0}%`, c: '#44aaff' },
-    { l: 'CRIT', v: `${game.playerStats?.crit ?? 0}%`, c: '#ffdd00' },
-    { l: 'SPD', v: `+${game.playerStats?.spd ?? 0}`, c: '#88ffcc' },
+    { l: 'ATK', v: `×${(game.playerStats?.atk ?? 1).toFixed(2)}`, c: '#ffaa44', g: 'rgba(255,160,60,0.75)' },
+    { l: 'DEF', v: `${game.playerStats?.def ?? 0}%`, c: '#66ddff', g: 'rgba(100,220,255,0.75)' },
+    { l: 'CRIT', v: `${game.playerStats?.crit ?? 0}%`, c: '#ffee44', g: 'rgba(255,230,80,0.75)' },
+    { l: 'SPD', v: `+${game.playerStats?.spd ?? 0}`, c: '#88ffcc', g: 'rgba(120,255,200,0.65)' },
   ];
   stats.forEach((s, i) => {
-    const col = i % 2, row = Math.floor(i / 2);
-    const bx = cx - 158 + col * 162, by = 210 + row * 48;
-    ctx.fillStyle = '#111'; ctx.beginPath(); ctx.roundRect(bx, by, 150, 38, 5); ctx.fill();
-    ctx.strokeStyle = '#1a2a1a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.roundRect(bx, by, 150, 38, 5); ctx.stroke();
-    ctx.fillStyle = '#445'; ctx.font = '10px Orbitron,Courier New'; ctx.textAlign = 'left';
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const bx = cx - 158 + col * 162;
+    const by = 212 + row * 48;
+    ctx.fillStyle = 'rgba(6,10,8,0.94)';
+    ctx.strokeStyle = 'rgba(0,255,80,0.28)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(bx, by, 150, 38, 5);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(127,255,127,0.85)';
+    ctx.font = 'bold 10px Orbitron,Courier New';
+    ctx.textAlign = 'left';
+    ctx.shadowColor = 'rgba(0,255,80,0.4)';
+    ctx.shadowBlur = 4;
     ctx.fillText(s.l, bx + 10, by + 14);
-    ctx.fillStyle = s.c; ctx.shadowColor = s.c; ctx.shadowBlur = 5;
-    ctx.font = 'bold 15px Orbitron,Courier New'; ctx.textAlign = 'right';
-    ctx.fillText(s.v, bx + 140, by + 28); ctx.shadowBlur = 0;
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = s.c;
+    ctx.shadowColor = s.g;
+    ctx.shadowBlur = 10;
+    ctx.font = '900 15px Orbitron,Courier New';
+    ctx.textAlign = 'right';
+    ctx.fillText(s.v, bx + 140, by + 28);
+    ctx.shadowBlur = 0;
   });
 
   game._pauseBtnHits = [];
-  const btnFont = 'bold 11px Orbitron,"Hiragino Sans","Yu Gothic",sans-serif';
-  const bw = 168, bh = 44, gap = 14;
-  const yBtn = 318;
+  const btnFont = 'bold 12px Orbitron,Courier New';
+  const bw = 168;
+  const bh = 44;
+  const gap = 14;
+  const yBtn = 320;
   const xResume = cx - bw - gap / 2;
   const xQuit = cx + gap / 2;
   const drawPauseActionBtn = (x, y, w, h, label, type, col, fillBase) => {
     const hovered = game.hoveredBtn?.pauseHitType === type;
     ctx.save();
     ctx.shadowColor = col;
-    ctx.shadowBlur = hovered ? 16 : 8;
+    ctx.shadowBlur = hovered ? 20 : 12;
     ctx.fillStyle = hovered ? fillBase.hover : fillBase.base;
     ctx.strokeStyle = hovered ? col : fillBase.stroke;
     ctx.lineWidth = hovered ? 2 : 1;
-    ctx.beginPath(); ctx.roundRect(x, y, w, h, 8); ctx.fill(); ctx.stroke();
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, 8);
+    ctx.fill();
+    ctx.stroke();
     ctx.shadowBlur = 0;
-    ctx.fillStyle = hovered ? '#fff' : col;
-    ctx.font = btnFont; ctx.textAlign = 'center';
+    ctx.fillStyle = hovered ? '#ffffff' : col;
+    ctx.shadowColor = col;
+    ctx.shadowBlur = hovered ? 8 : 4;
+    ctx.font = btnFont;
+    ctx.textAlign = 'center';
     ctx.fillText(label, x + w / 2, y + h / 2 + 4);
+    ctx.shadowBlur = 0;
     ctx.textAlign = 'left';
     ctx.restore();
     game._pauseBtnHits.push({ type, x, y, w, h });
   };
-  drawPauseActionBtn(xResume, yBtn, bw, bh, '続ける', 'resume', '#44ddff', {
-    base: 'rgba(0,50,80,0.94)', hover: 'rgba(0,80,120,0.97)', stroke: '#0a6080',
+  drawPauseActionBtn(xResume, yBtn, bw, bh, '続ける', 'resume', '#55eeff', {
+    base: 'rgba(0,40,72,0.95)', hover: 'rgba(0,90,130,0.98)', stroke: 'rgba(0,200,255,0.45)',
   });
-  drawPauseActionBtn(xQuit, yBtn, bw, bh, 'ゲームを終わる', 'quit', '#ffaa66', {
-    base: 'rgba(40,12,0,0.92)', hover: 'rgba(80,30,0,0.97)', stroke: 'rgba(180,80,0,0.7)',
+  drawPauseActionBtn(xQuit, yBtn, bw, bh, 'ゲームを終わる', 'quit', '#ffaa55', {
+    base: 'rgba(48,16,4,0.94)', hover: 'rgba(90,36,8,0.98)', stroke: 'rgba(255,140,60,0.55)',
   });
 
-  ctx.fillStyle = '#334'; ctx.font = '11px Orbitron,Courier New'; ctx.textAlign = 'center';
-  ctx.fillText(`STAGE ${game.stage}  ·  SCORE ${game.score}  ·  COMBO ${game.combo}`, cx, 432);
+  const st = formatStageForHud(game.stage);
+  drawPauseNeonLine(ctx, cx, 432, [
+    ['STAGE ', '#7fff7f', 'rgba(0,255,80,0.5)'],
+    [st, '#44ddff', 'rgba(80,200,255,0.7)'],
+    ['  ·  SCORE ', '#7fff7f', 'rgba(0,255,80,0.5)'],
+    [String(game.score | 0), '#ffff44', 'rgba(255,220,60,0.75)'],
+    ['  ·  COMBO ', '#7fff7f', 'rgba(0,255,80,0.5)'],
+    [String(game.combo | 0), '#88ffcc', 'rgba(120,255,200,0.6)'],
+  ]);
   ctx.textAlign = 'left';
 }
 

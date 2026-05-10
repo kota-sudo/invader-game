@@ -371,7 +371,7 @@ function formatStageId(stageNum) {
   return formatStageForHud(stageNum);
 }
 
-const hudController = createHudController({ game, stageEl, formatStageId, syncFuel, FUEL_CAP, formatFuelMmSs, fuelNextRegenMs });
+const hudController = createHudController({ game, stageEl, formatStageId, syncFuel });
 function updateHUD() { hudController.updateHUD(); }
 
 

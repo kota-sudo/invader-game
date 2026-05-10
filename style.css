@@ -50,8 +50,8 @@ body {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 6px;
-  padding: 8px 12px;
+  gap: 0;
+  padding: 8px 14px;
   font-size: 14px;
   background: linear-gradient(180deg, #0a0a0a 0%, #050505 100%);
   border: 1px solid #0f0;
@@ -80,37 +80,6 @@ body {
 .hud-score-wrap {
   margin-left: auto;
   text-align: right;
-}
-
-.hud-fuel-cell {
-  flex: 1 1 auto;
-  min-width: 8em;
-}
-
-.hud-fuel-next {
-  font-size: 0.78em;
-  opacity: 0.65;
-  white-space: nowrap;
-}
-
-.hud-status-cell {
-  flex: 1 1 100%;
-  text-align: center;
-  font-size: 11px;
-  font-weight: 700;
-  color: #ffaa44;
-  text-shadow: 0 0 8px rgba(255, 170, 68, 0.55);
-  letter-spacing: 0.5px;
-  min-height: 1em;
-}
-
-@media (min-width: 520px) {
-  .hud-status-cell {
-    flex: 1 1 12rem;
-    margin-left: auto;
-    max-width: 48%;
-    text-align: right;
-  }
 }
 
 #hud::before {
@@ -152,18 +121,6 @@ body {
   font-weight: 700;
 }
 
-#hud #coins {
-  color: #ffd700;
-  text-shadow: 0 0 10px rgba(255,215,0,0.8);
-  font-weight: 700;
-}
-
-#hud #gems {
-  color: #66ddff;
-  text-shadow: 0 0 10px rgba(100, 220, 255, 0.75);
-  font-weight: 700;
-}
-
 .canvas-wrap {
   position: relative;
   width: 100%;
@@ -195,18 +152,14 @@ body {
 @media (max-width: 500px) {
   #hud {
     font-size: 10px;
-    padding: 5px 8px;
+    padding: 5px 10px;
     letter-spacing: 0;
-    gap: 4px;
   }
   #hud #score, #hud #hiscore {
     font-size: 11px;
   }
   #hud #lives {
     font-size: 10px;
-  }
-  .hud-status-cell {
-    font-size: 9px;
   }
 }
 
