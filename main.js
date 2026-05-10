@@ -1372,7 +1372,7 @@ function triggerGameOver() {
   game.playerStats.hp = 0; updateHUD();
   game.state = 'gameover'; stopBGM();
   triggerFlash(255, 0, 0, 0.6); playSound('gameover'); vibrate([200, 100, 200]);
-  showMessage(buildGameOverAccessibilityMessage(game, { wasRecord }));
+  showMessage(buildGameOverAccessibilityMessage(game, { wasRecord }), { a11yOnly: true });
 }
 
 // ===== メイン更新（update-tick + game-store）=====

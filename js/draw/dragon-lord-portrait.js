@@ -171,6 +171,9 @@ export function drawDragonLordBattle(ctx, p, frameCount) {
   const pulse = 0.65 + Math.sin(frameCount * 0.11) * 0.35;
   const tilt = Math.sin(frameCount * 0.038) * 0.065;
 
+  const prevSmooth = ctx.imageSmoothingEnabled;
+  ctx.imageSmoothingEnabled = false;
+
   ctx.save();
 
   const footY = p.y + p.h - 1;
@@ -246,5 +249,7 @@ export function drawDragonLordBattle(ctx, p, frameCount) {
   });
 
   ctx.restore();
+
+  ctx.imageSmoothingEnabled = prevSmooth;
   return true;
 }

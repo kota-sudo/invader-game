@@ -420,7 +420,7 @@ export function createHandleKey(deps) {
     else if (code === 'Digit2') chooseRoute(1);
     return;
   }
-  if (code === 'KeyR' && game.state === 'gameover') {
+  if ((code === 'KeyR' || code === 'ArrowUp') && game.state === 'gameover') {
     game.continueNoStarsThisRun = false;
     showMessage(null); startBGM(); game.stage = game.startStage; initStars(); updateHUD(); initStage(); game.state = 'playing';
   }

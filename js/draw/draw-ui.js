@@ -281,9 +281,13 @@ function drawGameOverOverlay() {
 
   const touchBoost = W < 560 ? 1 : 0;
   const pw = Math.min(520, Math.max(340, W * 0.66));
-  const ph = Math.min(460, Math.max(copy.wasRecord ? 348 : 320, H * 0.56 + touchBoost * 24));
+  const phExtraBoss = copy.showBossRetry ? 68 : 0;
+  const ph = Math.min(
+    540,
+    Math.max((copy.wasRecord ? 356 : 328) + phExtraBoss + touchBoost * 24, H * (copy.showBossRetry ? 0.58 : 0.56) + touchBoost * 16),
+  );
   const px = Math.floor(cx - pw / 2);
-  const py = Math.floor(H * 0.14);
+  const py = Math.floor(H * (copy.showBossRetry ? 0.11 : 0.14));
   const r = 16;
   const accent = '#44ff88';
   const hoverId = game.hoveredBtn?.id || '';
@@ -370,6 +374,9 @@ function drawGameOverOverlay() {
   btn(y1, 'タイトルへ', 'SPACE', 'title', '#44ff88');
   btn(y1 + (bh + gap), '即リトライ', copy.retrySub, 'retry', '#88ccff');
   btn(y1 + (bh + gap) * 2, copy.continueMain, copy.continueSub, 'continue', '#ffcc66', !copy.gemOk);
+  if (copy.showBossRetry) {
+    btn(y1 + (bh + gap) * 3, copy.bossRetryMain, copy.bossRetrySub, 'boss_retry', '#ff88cc');
+  }
 
   ctx.fillStyle = 'rgba(150, 185, 220, 0.40)';
   ctx.font = '900 11px Orbitron,Courier New';
