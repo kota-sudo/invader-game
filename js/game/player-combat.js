@@ -25,7 +25,6 @@ export function checkPlayerHit() {
   }
   for (const inv of game.invaders.filter(i => i.alive)) {
     if (rectsOverlap(inv, game.player)) {
-      inv.alive = false;
       if (game.playerShield || (game.chaosBuff?.type === 'shield' && (game.chaosBuff.timer || 0) > 0)) { absorbWithShield(); return; }
       onPlayerHit(); return;
     }

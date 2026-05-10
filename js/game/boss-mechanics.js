@@ -396,8 +396,6 @@ export function updateBossMinions() {
       }
     }
     if (m.alive && rectsOverlap(m, game.player) && !(game.powerupActive === 'invincible' || game.player.invincibleTimer > 0)) {
-      m.alive = false;
-      spawnExplosion(m.x + m.w / 2, m.y + m.h / 2, '#ff44ff', 8);
       if (game.playerShield) { absorbWithShield(); } else { onPlayerHit(); }
     }
   }
