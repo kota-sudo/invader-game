@@ -8,27 +8,44 @@ import { getPlanet } from '../game-data.js';
 import { addMaterial } from './materials.js';
 import { safeLocalStorageSetItem } from './storage-helpers.js';
 import { computeStageStarMedal } from './stage-medals.js';
-import { ensureBossRenderState, updateBossAttackAnim, startBossAttackAnim } from './boss-render.js';
+import { ensureBossRenderState, updateBossAttackAnim, startBossAttackAnim, isDragonLordBoss } from './boss-render.js';
+import { updateDragonLordBoss, checkDragonLordBossPlayerHits, getDragonLordBattlePhase } from './dragon-lord-boss.js';
 import { pickBossPattern as _pickBossPattern, fireBossPattern as _fireBossPattern } from './boss-patterns.js';
 import { spawnMiniBoss, spawnHealer } from './enemy-spawning.js';
 import { rectsOverlap, absorbWithShield, onPlayerHit } from './player-combat.js';
 import { BOSS_SELECT_DATA } from './boss-select-data.js';
+
+function bumpStageRewardLedger(coinsDelta, gemsDelta) {
+  if (!game.stageRewardLedger) game.stageRewardLedger = { coins: 0, gems: 0 };
+  game.stageRewardLedger.coins += coinsDelta;
+  game.stageRewardLedger.gems += gemsDelta;
+}
 
 export function killBoss() {
   const _bossAbility = game.boss?.ability;
   spawnExplosion(game.boss.x + game.boss.w / 2, game.boss.y + game.boss.h / 2, '#ff0', 30);
   actions.triggerShake(10, 20); actions.triggerFlash(255, 150, 0, 0.7);
   game.score += 500 + game.stage * 100; actions.updateHUD(); addExp(150);
-  actions.addCoins(80 + game.stage * 8 + Math.floor(Math.random() * 40));
-  addGems(3 + Math.floor(game.stage / 5));
+  const _bossClearCoins = 80 + game.stage * 8 + Math.floor(Math.random() * 40);
+  actions.addCoins(_bossClearCoins);
+  bumpStageRewardLedger(_bossClearCoins, 0);
+  const _bossClearGems = 3 + Math.floor(game.stage / 5);
+  addGems(_bossClearGems);
+  bumpStageRewardLedger(0, _bossClearGems);
   const bp = getPlanet(game.stage).name;
   if (bp === 'SATURN') addMaterial('crystal', 2);
   else if (bp === 'JUPITER') addMaterial('crystal', 1);
   else addMaterial('core', 2);
   addMaterial('scrap', 3);
-  if (game.bossDifficulty === 2) { addMaterial('scrap', 2); addMaterial('core', 1); actions.addCoins(60); addGems(1); }
+  if (game.bossDifficulty === 2) {
+    addMaterial('scrap', 2); addMaterial('core', 1); actions.addCoins(60); addGems(1);
+    bumpStageRewardLedger(60, 1);
+  }
   const _featIdx = Math.floor(Date.now() / (7 * 24 * 3600 * 1000)) % BOSS_SELECT_DATA.length;
-  if (_bossAbility && _bossAbility === BOSS_SELECT_DATA[_featIdx]?.id) { addMaterial('scrap', 2); actions.addCoins(60); addGems(2); }
+  if (_bossAbility && _bossAbility === BOSS_SELECT_DATA[_featIdx]?.id) {
+    addMaterial('scrap', 2); actions.addCoins(60); addGems(2);
+    bumpStageRewardLedger(60, 2);
+  }
   playSound('boss_die');
   game.bossKillTotal++;
   safeLocalStorageSetItem('invader_boss_kills', String(game.bossKillTotal));
@@ -64,6 +81,9 @@ export function killBoss() {
   }
   const rankBonus = { S: 50, A: 35, B: 20, C: 10 }[game.stageRank] || 10;
   const rankGems = { S: 5, A: 3, B: 1, C: 0 }[game.stageRank] || 0;
+  const clearRewardCoins = game.stageRewardLedger?.coins ?? 0;
+  const clearRewardGems = game.stageRewardLedger?.gems ?? 0;
+  game.stageRewardLedger = { coins: 0, gems: 0 };
   actions.addCoins(rankBonus); if (rankGems > 0) addGems(rankGems);
   if (game.stageType === 'endless') {
     actions.addCoins(rankBonus); if (rankGems > 0) addGems(rankGems);
@@ -88,6 +108,8 @@ export function killBoss() {
     kills: game.stageStats.kills,
     hits: game.stageStats.hits,
     maxCombo: game.stageStats.maxCombo,
+    clearRewardCoins,
+    clearRewardGems,
     rankBonus,
     rankGems,
     score: game.score,
@@ -101,13 +123,18 @@ export function killBoss() {
 export function killMiniBoss(mb) {
   spawnExplosion(mb.x + mb.w / 2, mb.y + mb.h / 2, '#f80', 16);
   actions.triggerShake(6, 10); game.score += 200 + game.stage * 50; actions.updateHUD(); addExp(60);
-  actions.addCoins(25 + Math.floor(Math.random() * 15));
+  const _mbCoin = 25 + Math.floor(Math.random() * 15);
+  actions.addCoins(_mbCoin);
+  bumpStageRewardLedger(_mbCoin, 0);
   playSound('boss_die');
   mb.alive = false;
   if (game.miniBosses.every(m => !m.alive)) {
     game.miniBosses = [];
     game.stageRank = actions.calcRank();
     const rankBonus = { S: 50, A: 35, B: 20, C: 10 }[game.stageRank] || 10;
+    const clearRewardCoins = game.stageRewardLedger?.coins ?? 0;
+    const clearRewardGems = game.stageRewardLedger?.gems ?? 0;
+    game.stageRewardLedger = { coins: 0, gems: 0 };
     actions.addCoins(rankBonus); stopBGM();
     const _skipStars2 = !!game.continueNoStarsThisRun;
     const _starsEarned2 = _skipStars2 ? 0 : computeStageStarMedal(game.stageStats.hits, game.stageStats.maxCombo, game.stageType);
@@ -119,6 +146,8 @@ export function killMiniBoss(mb) {
       kills: game.stageStats.kills,
       hits: game.stageStats.hits,
       maxCombo: game.stageStats.maxCombo,
+      clearRewardCoins,
+      clearRewardGems,
       rankBonus,
       rankGems: 0,
       score: game.score,
@@ -132,7 +161,12 @@ export function killMiniBoss(mb) {
 export function updateBoss() {
   if (!game.boss) return;
   ensureBossRenderState(game.boss);
-  updateBossAttackAnim(game.boss);
+  if (isDragonLordBoss(game.boss)) {
+    updateDragonLordBoss(game.boss);
+    checkDragonLordBossPlayerHits(game.boss);
+  } else {
+    updateBossAttackAnim(game.boss);
+  }
   if (game.boss.dying) {
     game.boss.dyingTimer--;
     const prog = 1 - game.boss.dyingTimer / 100;
@@ -153,7 +187,11 @@ export function updateBoss() {
     return;
   }
 
-  game.boss.phase = game.boss.hp < game.boss.maxHp * 0.33 ? 2 : game.boss.hp < game.boss.maxHp * 0.66 ? 1 : 0;
+  if (isDragonLordBoss(game.boss)) {
+    game.boss.phase = getDragonLordBattlePhase(game.boss) >= 2 ? 2 : 0;
+  } else {
+    game.boss.phase = game.boss.hp < game.boss.maxHp * 0.33 ? 2 : game.boss.hp < game.boss.maxHp * 0.66 ? 1 : 0;
+  }
 
   if (game.boss.ability === 'shield' && game.boss.shielded) {
     for (let i = game.bullets.length - 1; i >= 0; i--) {
@@ -179,42 +217,44 @@ export function updateBoss() {
     }
   }
 
-  const spd = game.boss.speed * (game.boss.phase >= 1 ? 1.4 : 1) * (game.boss.phase >= 2 ? 1.3 : 1);
-  game.boss.x += game.boss.dir * spd;
-  if (game.boss.x + game.boss.w >= W) game.boss.dir = -1;
-  if (game.boss.x <= 0) game.boss.dir = 1;
+  if (!isDragonLordBoss(game.boss)) {
+    const spd = game.boss.speed * (game.boss.phase >= 1 ? 1.4 : 1) * (game.boss.phase >= 2 ? 1.3 : 1);
+    game.boss.x += game.boss.dir * spd;
+    if (game.boss.x + game.boss.w >= W) game.boss.dir = -1;
+    if (game.boss.x <= 0) game.boss.dir = 1;
 
-  const interval = game.boss.phase >= 2 ? Math.floor(game.boss.shootInterval * 0.5) : game.boss.phase === 1 ? Math.floor(game.boss.shootInterval * 0.7) : game.boss.shootInterval;
-  if (game.boss.attackCharge > 0) {
-    game.boss.attackCharge--;
-    if (game.boss.attackCharge === 0) {
-      if (game.boss.attackAnim?.type === 'coreShot') {
-        game.boss.attackAnim.phase = 'active';
-        game.boss.attackAnim.timer = 0;
-      } else if (game.boss.attackAnim?.type === 'wingBarrage') {
-        game.boss.attackAnim.phase = 'active';
-        game.boss.attackAnim.timer = 0;
+    const interval = game.boss.phase >= 2 ? Math.floor(game.boss.shootInterval * 0.5) : game.boss.phase === 1 ? Math.floor(game.boss.shootInterval * 0.7) : game.boss.shootInterval;
+    if (game.boss.attackCharge > 0) {
+      game.boss.attackCharge--;
+      if (game.boss.attackCharge === 0) {
+        if (game.boss.attackAnim?.type === 'coreShot') {
+          game.boss.attackAnim.phase = 'active';
+          game.boss.attackAnim.timer = 0;
+        } else if (game.boss.attackAnim?.type === 'wingBarrage') {
+          game.boss.attackAnim.phase = 'active';
+          game.boss.attackAnim.timer = 0;
+        }
+        _fireBossPattern(game.boss.nextPattern, { playSound });
       }
-      _fireBossPattern(game.boss.nextPattern, { playSound });
-    }
-  } else {
-    game.boss.shootTimer++;
-    if (game.boss.shootTimer >= interval) {
-      game.boss.shootTimer = 0;
-      game.boss.nextPattern = _pickBossPattern();
-      game.boss.attackCharge = 28;
-      if (game.boss.nextPattern === 'aimed') {
-        game.boss.aimTarget = { x: game.player.x + game.player.w / 2, y: game.player.y + game.player.h / 2 };
-      }
-      if (game.boss.nextPattern === 'aimed' || game.boss.nextPattern === 'triple' || game.boss.nextPattern === 'spread') {
-        startBossAttackAnim(game.boss, 'coreShot', { allowOverride: false });
-      } else if (game.boss.nextPattern === 'circle' || game.boss.nextPattern === 'wall' || game.boss.nextPattern === 'sweep') {
-        startBossAttackAnim(game.boss, 'wingBarrage', { allowOverride: true });
+    } else {
+      game.boss.shootTimer++;
+      if (game.boss.shootTimer >= interval) {
+        game.boss.shootTimer = 0;
+        game.boss.nextPattern = _pickBossPattern();
+        game.boss.attackCharge = 28;
+        if (game.boss.nextPattern === 'aimed') {
+          game.boss.aimTarget = { x: game.player.x + game.player.w / 2, y: game.player.y + game.player.h / 2 };
+        }
+        if (game.boss.nextPattern === 'aimed' || game.boss.nextPattern === 'triple' || game.boss.nextPattern === 'spread') {
+          startBossAttackAnim(game.boss, 'coreShot', { allowOverride: false });
+        } else if (game.boss.nextPattern === 'circle' || game.boss.nextPattern === 'wall' || game.boss.nextPattern === 'sweep') {
+          startBossAttackAnim(game.boss, 'wingBarrage', { allowOverride: true });
+        }
       }
     }
   }
 
-  if (game.boss.ability === 'dasher' && game.boss.entryDone) {
+  if (!isDragonLordBoss(game.boss) && game.boss.ability === 'dasher' && game.boss.entryDone) {
     if (!game.boss._dashing) {
       game.boss.dashTimer--;
       if (game.boss.dashTimer <= 0) {
@@ -238,7 +278,7 @@ export function updateBoss() {
     }
   }
 
-  if (game.boss.ability === 'barrage' && game.boss.entryDone) {
+  if (!isDragonLordBoss(game.boss) && game.boss.ability === 'barrage' && game.boss.entryDone) {
     game.boss.barrageCharge++;
     const bInt = Math.max(55, 130 - game.stage * 6);
     if (game.boss.barrageCharge >= bInt) {
@@ -256,7 +296,7 @@ export function updateBoss() {
     }
   }
 
-  if (game.boss.ability === 'split' && game.boss.phase >= 1 && !game.boss.splitDone) {
+  if (!isDragonLordBoss(game.boss) && game.boss.ability === 'split' && game.boss.phase >= 1 && !game.boss.splitDone) {
     game.boss.splitDone = true;
     const halfHp = Math.floor(game.boss.hp / 2);
     spawnMiniBoss(game.boss.x - 30, game.boss.y, halfHp);
@@ -268,7 +308,7 @@ export function updateBoss() {
     return;
   }
 
-  if (game.boss.phase >= 1) {
+  if (!isDragonLordBoss(game.boss) && game.boss.phase >= 1) {
     game.minionSpawnTimer++;
     const mInterval = game.boss.phase >= 2 ? 200 : 240;
     const mCap = 6;

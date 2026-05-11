@@ -102,23 +102,113 @@ body {
 
 #hud #score,
 #hud #hiscore {
+  display: inline-block;
   color: #ffff44;
   text-shadow: 0 0 10px rgba(255,255,0,0.7);
   font-weight: 700;
   font-size: 16px;
+  transform-origin: center right;
 }
 
 #hud #lives {
+  display: inline-block;
   color: #00ff88;
   text-shadow: 0 0 10px rgba(0,255,136,0.7);
   font-weight: 700;
   font-size: 13px;
+  transform-origin: center left;
+}
+
+/* 被弾直後：HP 数値に短い警告トーン */
+#hud.hud-hp-hurt #lives {
+  color: #ff8860 !important;
+  text-shadow: 0 0 12px rgba(255, 90, 50, 0.85), 0 0 20px rgba(255, 40, 30, 0.45) !important;
+  animation: hudHpHurtPulse 0.34s ease-in-out 2;
+}
+
+@keyframes hudHpHurtPulse {
+  0%, 100% { filter: brightness(1.05); opacity: 1; }
+  50% { filter: brightness(1.35); opacity: 0.82; }
+}
+
+/* スコア加算時の軽いリップル（キャンバス側ポップと同期しやすく） */
+#hud.hud-score-pop #score {
+  animation: hudScorePop 0.36s ease-out;
+}
+
+@keyframes hudScorePop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.12); }
+  100% { transform: scale(1); }
 }
 
 #hud #stage {
   color: #44ddff;
   text-shadow: 0 0 10px rgba(50,200,255,0.7);
   font-weight: 700;
+}
+
+/* ゲームオーバー・HP0：上部HUDを敗北モードに（通常の緑発光と差別化） */
+.hud-hp-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+.hud-hp-line {
+  white-space: nowrap;
+}
+#hud .hud-hp-alert {
+  font-family: Orbitron, sans-serif;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #ff4422;
+  text-shadow: 0 0 10px rgba(255, 50, 30, 0.85);
+}
+#hud.hud-gameover {
+  background: linear-gradient(180deg, #070302 0%, #030101 100%);
+  border-color: rgba(180, 45, 35, 0.75);
+  box-shadow: inset 0 0 28px rgba(40, 8, 6, 0.55);
+}
+#hud.hud-gameover::before {
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 70, 45, 0.07) 50%, transparent 100%);
+}
+#hud.hud-gameover .hud-hp-alert {
+  animation: hudGoPulse 1.1s ease-in-out infinite;
+}
+#hud.hud-gameover #lives {
+  color: #ff3328 !important;
+  text-shadow: 0 0 12px rgba(255, 45, 35, 0.95), 0 0 22px rgba(180, 20, 10, 0.55) !important;
+  animation: hudHpDestroyedBlink 0.85s ease-in-out infinite;
+}
+#hud.hud-gameover .hud-hp-line {
+  color: rgba(255, 190, 175, 0.88);
+  text-shadow: 0 0 6px rgba(255, 80, 60, 0.35);
+}
+#hud.hud-gameover #stage {
+  color: #5599bb;
+  text-shadow: 0 0 8px rgba(60, 140, 180, 0.45);
+  opacity: 0.72;
+}
+/* ゲームオーバー時はキャンバス中央スコアが主役のため、右上 SCORE は控えめに */
+#hud.hud-gameover .hud-score-wrap {
+  opacity: 0.52;
+  filter: saturate(0.55);
+}
+#hud.hud-gameover #score {
+  color: #887730;
+  text-shadow: 0 0 4px rgba(90, 75, 30, 0.35);
+  opacity: 0.72;
+  font-size: 13px !important;
+}
+@keyframes hudHpDestroyedBlink {
+  0%, 100% { opacity: 1; filter: brightness(1.05); }
+  50% { opacity: 0.38; filter: brightness(0.75); }
+}
+@keyframes hudGoPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
 }
 
 .canvas-wrap {
@@ -157,6 +247,9 @@ body {
   }
   #hud #score, #hud #hiscore {
     font-size: 11px;
+  }
+  #hud.hud-gameover #score {
+    font-size: 10px !important;
   }
   #hud #lives {
     font-size: 10px;

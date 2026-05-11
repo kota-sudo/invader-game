@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700;800;900&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=118">
   <link rel="stylesheet" href="css/stage-select.css?v=118">
-  <link rel="stylesheet" href="css/galaxy-map.css?v=118">
+  <link rel="stylesheet" href="css/galaxy-map.css?v=120">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -27,7 +27,10 @@
     <div id="hud">
       <div class="hud-row hud-row-primary">
         <span class="hud-cell">STAGE <span id="stage">1-1</span></span>
-        <span class="hud-cell">HP <span id="lives">100/100</span></span>
+        <span class="hud-cell hud-hp-cell">
+          <span id="hud-hp-alert" class="hud-hp-alert" hidden></span>
+          <span class="hud-hp-line">HP <span id="lives">100/100</span></span>
+        </span>
         <span class="hud-cell hud-score-wrap">SCORE <span id="score">0</span></span>
       </div>
     </div>

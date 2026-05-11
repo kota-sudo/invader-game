@@ -1,6 +1,9 @@
 export const CANVAS_W = 800;
 export const CANVAS_H = 600;
 
+/** ステージリザルトでボタンが表示・操作可能になるまでの経過フレーム */
+export const STAGE_RESULT_BUTTON_MIN_TIMER = 46;
+
 export const CHARGE_MAX = 50;
 export const WAVE_CLEAR_DELAY = 90;
 export const INVADER_W = 36;

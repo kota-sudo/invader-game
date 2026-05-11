@@ -1,7 +1,6 @@
 import {
   getPlanet,
   getWorldInfo,
-  getPlanetEnemyColors,
   ENEMY_PREVIEW_COLORS,
   ENEMY_PREVIEW_LABELS,
   getStageEnemyTypes,
@@ -54,7 +53,11 @@ import {
   marsWaveHasMidBoss,
   marsWaveHasBoss,
 } from './js/game/mars-wave-presets.js';
-import { getStageSelectShipTarget, getStageSelectShipFollowStage } from './js/game/stage-select-map-geometry.js';
+import {
+  getStageSelectShipTarget,
+  getStageSelectShipFollowStage,
+  getStageSelectIdealScroll,
+} from './js/game/stage-select-map-geometry.js';
 import {
   CHARGE_MAX,
   WAVE_CLEAR_DELAY,
@@ -85,8 +88,10 @@ import {
   missionEffectiveProgress,
 } from './js/game/missions-runtime.js';
 import { safeLocalStorageSetItem } from './js/game/storage-helpers.js';
+import { recordProfileExpForStageClear } from './js/game/profile-progress.js';
 import { getGameDomElements } from './js/ui/dom-elements.js';
 import { createMessageController } from './js/ui/message.js';
+import { SAVE_IMPORT_SESSION_KEY } from './js/game/save-backup.js';
 import { mountStageSelectOverlay, setStageSelectOverlayHelpers } from './js/ui/stage-select-overlay.js';
 import { mountGalaxyMapOverlay, setGalaxyMapOverlayHelpers } from './js/ui/galaxy-map-overlay.js';
 import { runUpdate } from './js/game/update-tick.js';
@@ -127,6 +132,7 @@ import {
   initMasterVolumeFromStorage,
 } from './js/game/audio.js';
 import { getImage } from './js/game/image-cache.js';
+import { DRAGON_LORD_ALL_SPRITE_SRCS } from './js/draw/dragon-lord-portrait.js';
 import { currentWeapon, cycleWeapon, getAvailableWeapons } from './js/game/weapon.js';
 import { saveCoins, saveGems, addGems } from './js/game/economy.js';
 import {
@@ -153,6 +159,7 @@ import {
   doGachaPull,
 } from './js/game/gacha.js';
 import { IAP_PACKAGES, NOTICES } from './js/game/iap-notices-data.js';
+import { loadIapFlags } from './js/game/iap-purchase.js';
 import { createUiButtons } from './js/game/ui-buttons.js';
 import { createHandleKey } from './js/game/handle-key.js';
 import { getLocalWeekEpoch, pushWeeklyLocalScore, readWeeklyLocalBoard } from './js/game/weekly-board.js';
@@ -212,6 +219,7 @@ import {
   drawUFO,
   drawPowerups,
   drawBullets,
+  drawCoinPickups,
   drawBossMinions,
   drawPets,
   drawDashTrail
@@ -239,6 +247,8 @@ import {
   drawLifeGainDisplay,
   drawLevelUpDisplay,
   drawEventBanner,
+  drawMeteorRainEnvOverlay,
+  drawCombatPlayerVignette,
   drawMatPopups,
   drawStageClearAnim,
   drawBossWarning,
@@ -246,7 +256,7 @@ import {
   drawHitFlash,
   drawScanlines,
   drawSurvivalTimer,
-  drawWaveBanner
+  drawWaveBanner,
 } from './js/draw/draw-ui.js';
 import { createHudController } from './js/ui/hud.js';
 import { loadSettings as _loadSettings, saveSettings as _saveSettings } from './js/game/settings-storage.js';
@@ -271,7 +281,7 @@ import { drawWorldBgObjects, setWorldBgDrawDeps } from './js/draw/draw-world-bg.
 import { BOSS_SELECT_DATA } from './js/game/boss-select-data.js';
 import { drawBossCardSprite, setBossCardDrawDeps } from './js/draw/draw-boss-card.js';
 import { pickBossPattern as _pickBossPattern, fireBossPattern as _fireBossPattern } from './js/game/boss-patterns.js';
-import { STARDUST_SHOP_ITEMS, applyStardustShop as _applyStardustShop } from './js/game/stardust-shop.js';
+import { getStardustShopItems, applyStardustShop as _applyStardustShop } from './js/game/stardust-shop.js';
 import {
   handleGachaResultPrimaryAction,
   handleGachaMainClick,
@@ -341,14 +351,29 @@ installCanvasPolyfills();
 const { canvas, ctx, stageEl, messageEl, W, H } = getGameDomElements();
 const { showMessage } = createMessageController(messageEl);
 
+try {
+  const raw = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(SAVE_IMPORT_SESSION_KEY) : null;
+  if (raw) {
+    sessionStorage.removeItem(SAVE_IMPORT_SESSION_KEY);
+    const j = JSON.parse(raw);
+    if (j && j.ok) {
+      showMessage('セーブを読み込みました（再読み込み済み）');
+      setTimeout(() => showMessage(null), 4000);
+    }
+  }
+} catch (_) {
+  /* ignore */
+}
+
 {
   const src = readTitleBackgroundImageSrc();
   if (src) getImage(src);
   getImage('./assets/stage-select-world1-left.png');
   getImage(MARS_STAGE_MAP_BG);
   for (const url of Object.values(MARS_BATTLE_BACKGROUNDS)) getImage(url);
+  getImage('./assets/customize-stage-mars.png');
   getImage('./assets/enemies/mars/normal-1-1.png');
-  getImage('./assets/player/dragon-lord.png');
+  for (const url of DRAGON_LORD_ALL_SPRITE_SRCS) getImage(url);
   getImage('./assets/enemies/mars/boss-1-1.png');
   getImage('./assets/ui/stage-result-mars-bg.png');
 }
@@ -662,16 +687,27 @@ function startGame() {
   game.novaTimer = 0; game.chaosTimer = 0; game.chaosBuff = null;
   game.seenUpgradeIds = new Set();
   game.exp = 0; game.playerLevel = 1; game.levelUpDisplay = null;
-  game.chargeTimer = 0; game.chargeReady = false; game.dashTimer = 0; game.dashCooldown = 0; game.dashTrail = [];
+  game.chargeTimer = 0; game.chargeReady = false; game.dragonLordFirePoseTimer = 0;
+  game.dashTimer = 0; game.dashCooldown = 0; game.dashTrail = [];
   game.stageType = game.bossRushModeActive ? 'boss_rush' : game.endlessModeActive ? 'endless' : 'normal'; game.stageRank = null; game.mapRoutes = [];
   game.continueNoStarsThisRun = false;
   game.stageStats = { hits: 0, maxCombo: 0, kills: 0 };
+  game.runStartCoins = game.coins | 0;
+  game.runEnemyKills = 0;
+  game.runPlayFrames = 0;
   game.bossRushCount = 0; game.bossRushDelay = 0; game.escortShip = null; game.survivalTimer = 0;
   game.ultimateGauge = 0; game.ultimateActive = false; game.ultimateTimer = 0;
   game.bossCutinTimer = 0; game.gravityZones = []; game.emFields = []; game.blackHoles = []; game.meteorRainTimer = 0; game.meteorRainWarning = 0;
   initStars(); updateHUD(); initStage();
   showMessage(null); game.state = 'playing';
 }
+/** ステージが進んだ直後：スコア・HP は引き継がず新ステージ用に初期化 */
+function resetStageCarryoverStats() {
+  game.score = 0;
+  game.nextLifeScore = 5000;
+  if (game.playerStats) game.playerStats.hp = game.playerStats.maxHp;
+}
+
 function nextStage() {
   ensureNormalQuestProfile();
   game.questLifetime.totalStageClears++;
@@ -681,6 +717,7 @@ function nextStage() {
     game.questLifetime.totalNoDmgClears++;
   }
   game.stage++;
+  resetStageCarryoverStats();
   if (game.stage > game.highestStage) {
     game.highestStage = game.stage;
     safeLocalStorageSetItem('invader_highest_stage', String(game.highestStage));
@@ -703,9 +740,9 @@ function initStage() {
   game.invaderSpawnInterval = Math.max(40, 130 - (game.stage - 1) * 8);
   game.maxInvaders = Math.min(15, 4 + game.stage * 2);
   game.muzzleFlashes = []; game.bossWarningTimer = 0; game.stageBannerTimer = 120;
-  game.currentEvent = null; game.eventTimer = 0; game.eventCooldown = 300;
+  game.currentEvent = null; game.eventTimer = 0; game.eventCooldown = 300; game.meteorEventLanes = null;
   game.formationTimer = 500; game.healerSpawnTimer = 0;
-  game.chargeTimer = 0; game.chargeReady = false; game.dashTrail = [];
+  game.chargeTimer = 0; game.chargeReady = false; game.dragonLordFirePoseTimer = 0; game.dashTrail = [];
   game.petTimers = { dragon: 0, hawk: 0, bomber: 0, ghost: 0, fenrir: 0 }; game.petBullets = [];
   triggerFlash(0, 100, 255, 0.3);
   const _dims = getShipDims();
@@ -713,11 +750,15 @@ function initStage() {
   game.barriers = [];
   stageEl.textContent = formatStageId(game.stage);
   game.stageStats = { hits: 0, maxCombo: 0, kills: 0 };
+  game.stageRewardLedger = { coins: 0, gems: 0 };
   game.bossRushCount = 0; game.bossRushDelay = 0; game.escortShip = null;
   game.survivalTimer = SURVIVAL_DURATION; game.minionSpawnTimer = 0;
   game.bossCutinTimer = 0; game.gravityZones = []; game.emFields = []; game.blackHoles = []; game.meteorRainTimer = 0; game.meteorRainWarning = 0;
-  game.waveNum = 0; game.waveState = 'idle'; game.waveKills = 0; game.waveTargetKills = 0; game.waveDelay = 0; game.waveBannerTimer = 0;
+  game.waveNum = 0; game.waveState = 'idle'; game.waveKills = 0; game.waveTargetKills = 0; game.waveDelay = 0;   game.waveBannerTimer = 0;
   game.marsWaveAwaitMiniBossClear = false;
+  game.matPopups = [];
+  game.coinPickups = [];
+  game._lastHudScore = game.score | 0;
   if (game.stageType === 'normal' || game.stageType === 'endless') initEnvGimmicks();
 
   // 小惑星ステージ判定
@@ -735,6 +776,7 @@ function initStage() {
 
 function respawn() {
   game.bullets = []; game.invaderBullets = []; game.particles = [];
+  game.dragonLordFirePoseTimer = 0;
   const _d = getShipDims(); game.player.w = _d.w; game.player.h = _d.h;
   game.player.x = W / 2 - game.player.w / 2; game.player.y = H - 100;
   game.player.invincibleTimer = 180 + game.playerUpgrades.invincibleBonus;
@@ -782,7 +824,8 @@ function fireChargedShot() {
     x: cx - cw / 2, y: game.player.y - 10, w: cw, h: cw, charged: true,
     bspd: BULLET_SPEED + game.playerUpgrades.bulletSpd, piercesLeft: pierces
   });
-  game.muzzleFlashes.push({ x: cx, y: game.player.y - 10, timer: 12, maxTimer: 12 });
+  game.muzzleFlashes.push({ x: cx, y: game.player.y - 10, timer: 14, maxTimer: 14, kind: 'charge' });
+  game.dragonLordFirePoseTimer = 22;
   playSound('shoot_charge');
   triggerFlash(255, 200, 0, 0.15);
 }
@@ -795,7 +838,7 @@ function fireBullet() {
   if (w === 'laser') {
     game.weaponAmmo.laser--;
     if (game.weaponAmmo.laser <= 0 && currentWeapon() === 'laser') cycleWeapon();
-    game.bullets.push({ x: cx - 3, y: game.player.y, w: 6, h: 14, laser: true, bspd });
+    game.bullets.push({ x: cx - 3.5, y: game.player.y, w: 7, h: 17, laser: true, bspd });
     playSound('shoot_laser');
     for (const inv of game.invaders) {
       if (!inv.alive) continue;
@@ -821,34 +864,45 @@ function fireBullet() {
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist < minDist) { minDist = dist; target = t; }
     }
-    game.bullets.push({ x: cx - 3, y: game.player.y - 10, w: 6, h: 14, homing: true, target, bspd, vx: 0, vy: -bspd });
+    game.bullets.push({ x: cx - 3.5, y: game.player.y - 10, w: 7, h: 16, homing: true, target, bspd, vx: 0, vy: -bspd });
     playSound('shoot_homing'); return;
   }
   if (w === 'explosive') {
     game.weaponAmmo.explosive--;
     if (game.weaponAmmo.explosive <= 0 && currentWeapon() === 'explosive') cycleWeapon();
-    game.bullets.push({ x: cx - 4, y: game.player.y, w: 8, h: 8, explosive: true, bspd });
+    game.bullets.push({ x: cx - 4.5, y: game.player.y, w: 9, h: 9, explosive: true, bspd });
     playSound('shoot_expl'); return;
   }
   const _piercing = game.playerUpgrades.piercing > 0 ? { piercesLeft: game.playerUpgrades.piercing } : {};
   if (game.playerUpgrades.spread) {
     [[-0.25, 0], [0, -0.1], [0.25, 0]].forEach(([ax, ay]) => {
-      game.bullets.push({ x: cx - 2, y: game.player.y, w: 4, h: 14, vx: ax * bspd, vy: -(bspd + ay * bspd), bspd, ..._piercing });
+      game.bullets.push({ x: cx - 2.5, y: game.player.y, w: 5, h: 16, vx: ax * bspd, vy: -(bspd + ay * bspd), bspd, ..._piercing });
     });
   } else {
-    game.bullets.push({ x: cx - 2, y: game.player.y, w: 4, h: 14, bspd, ..._piercing });
+    game.bullets.push({ x: cx - 2.5, y: game.player.y, w: 5, h: 16, bspd, ..._piercing });
   }
   playSound('shoot');
 }
 
 // ===== ボス撃破 =====
+function bumpStageRewardLedger(coinsDelta, gemsDelta) {
+  if (!game.stageRewardLedger) game.stageRewardLedger = { coins: 0, gems: 0 };
+  game.stageRewardLedger.coins += coinsDelta;
+  game.stageRewardLedger.gems += gemsDelta;
+}
+
 function killBoss() {
+  if (game.state === 'playing') game.runEnemyKills = (game.runEnemyKills || 0) + 1;
   const _bossAbility = game.boss?.ability;
   spawnExplosion(game.boss.x + game.boss.w / 2, game.boss.y + game.boss.h / 2, '#ff0', 30);
   triggerShake(10, 20); triggerFlash(255, 150, 0, 0.7);
   game.score += 500 + game.stage * 100; updateHUD(); addExp(150);
-  addCoins(80 + game.stage * 8 + Math.floor(Math.random() * 40));
-  addGems(3 + Math.floor(game.stage / 5));
+  const _bossClearCoins = 80 + game.stage * 8 + Math.floor(Math.random() * 40);
+  addCoins(_bossClearCoins);
+  bumpStageRewardLedger(_bossClearCoins, 0);
+  const _bossClearGems = 3 + Math.floor(game.stage / 5);
+  addGems(_bossClearGems);
+  bumpStageRewardLedger(0, _bossClearGems);
   // ボス撃破 素材ドロップ
   const bp = getPlanet(game.stage).name;
   if (bp === 'SATURN') addMaterial('crystal', 2);
@@ -856,10 +910,16 @@ function killBoss() {
   else addMaterial('core', 2);
   addMaterial('scrap', 3);
   // 難易度 HARD ボーナス
-  if (game.bossDifficulty === 2) { addMaterial('scrap', 2); addMaterial('core', 1); addCoins(60); addGems(1); }
+  if (game.bossDifficulty === 2) {
+    addMaterial('scrap', 2); addMaterial('core', 1); addCoins(60); addGems(1);
+    bumpStageRewardLedger(60, 1);
+  }
   // 週替わり FEATURED ボーナス
   const _featIdx = Math.floor(Date.now() / (7 * 24 * 3600 * 1000)) % BOSS_SELECT_DATA.length;
-  if (_bossAbility && _bossAbility === BOSS_SELECT_DATA[_featIdx]?.id) { addMaterial('scrap', 2); addCoins(60); addGems(2); }
+  if (_bossAbility && _bossAbility === BOSS_SELECT_DATA[_featIdx]?.id) {
+    addMaterial('scrap', 2); addCoins(60); addGems(2);
+    bumpStageRewardLedger(60, 2);
+  }
   playSound('boss_die');
   game.bossKillTotal++;
   safeLocalStorageSetItem('invader_boss_kills', String(game.bossKillTotal));
@@ -882,6 +942,8 @@ function killBoss() {
   game.boss = null; game.miniBosses = [];
   // ボス連戦: まだ次のボスがいる
   if (game.stageType === 'boss_rush' && game.bossRushCount < game.bossRushMax - 1) {
+    const prMid = recordProfileExpForStageClear(game, game.stage);
+    if (prMid.leveled) game.lifeGainDisplay = { text: `プロフィール Lv.${prMid.newLevel}！最大HPが伸びました`, timer: 200, color: '#aef' };
     game.bossRushCount++;
     game.bossRushDelay = 90;
     return;
@@ -898,16 +960,23 @@ function killBoss() {
   }
   const rankBonus = { S: 50, A: 35, B: 20, C: 10 }[game.stageRank] || 10;
   const rankGems = { S: 5, A: 3, B: 1, C: 0 }[game.stageRank] || 0;
+  const clearRewardCoins = game.stageRewardLedger?.coins ?? 0;
+  const clearRewardGems = game.stageRewardLedger?.gems ?? 0;
+  game.stageRewardLedger = { coins: 0, gems: 0 };
   addCoins(rankBonus); if (rankGems > 0) addGems(rankGems);
+  const prBossClear = recordProfileExpForStageClear(game, game.stage);
+  if (prBossClear.leveled) game.lifeGainDisplay = { text: `プロフィール Lv.${prBossClear.newLevel}！最大HPが伸びました`, timer: 220, color: '#aef' };
   if (game.stageType === 'endless') {
     addCoins(rankBonus); if (rankGems > 0) addGems(rankGems); // double reward
     addExp(60);
     game.boss = null; game.bossPhase = false; game.bossMinions = [];
     game.stage++;
+    resetStageCarryoverStats();
     game.waveNum = 0; game.waveState = 'wait'; game.waveDelay = 150;
     game.invaders = []; game.invaderBullets = [];
     game.stageStats = { hits: 0, maxCombo: 0, kills: 0 };
     triggerFlash(0, 200, 255, 0.4);
+    updateHUD();
     startBGM(); return;
   }
   stopBGM();
@@ -922,30 +991,43 @@ function killBoss() {
     kills: game.stageStats.kills,
     hits: game.stageStats.hits,
     maxCombo: game.stageStats.maxCombo,
+    clearRewardCoins,
+    clearRewardGems,
     rankBonus,
     rankGems,
     score: game.score,
     starsEarned: _starsEarned,
     starsSkippedMedal: _skipStars,
+    profileExpGained: prBossClear.expGained,
+    profileLeveled: !!prBossClear.leveled,
+    profileNewLevel: prBossClear.newLevel,
   };
   game.stageResultTimer = 0;
   game.bullets = []; game.invaderBullets = []; game.stageClearAnimTimer = 80;
 }
 
 function killMiniBoss(mb) {
+  if (game.state === 'playing') game.runEnemyKills = (game.runEnemyKills || 0) + 1;
   spawnExplosion(mb.x + mb.w / 2, mb.y + mb.h / 2, '#f80', 16);
   triggerShake(6, 10); game.score += 200 + game.stage * 50; updateHUD(); addExp(60);
-  addCoins(25 + Math.floor(Math.random() * 15));
+  const _mbCoin = 25 + Math.floor(Math.random() * 15);
+  addCoins(_mbCoin);
+  bumpStageRewardLedger(_mbCoin, 0);
   playSound('boss_die');
   mb.alive = false;
   if (game.miniBosses.every(m => !m.alive)) {
     game.miniBosses = [];
     game.stageRank = calcRank();
     const rankBonus = { S: 50, A: 35, B: 20, C: 10 }[game.stageRank] || 10;
+    const clearRewardCoins = game.stageRewardLedger?.coins ?? 0;
+    const clearRewardGems = game.stageRewardLedger?.gems ?? 0;
+    game.stageRewardLedger = { coins: 0, gems: 0 };
     addCoins(rankBonus); stopBGM();
     const _skipStars2 = !!game.continueNoStarsThisRun;
     const _starsEarned2 = _skipStars2 ? 0 : computeStageStarMedal(game.stageStats.hits, game.stageStats.maxCombo, game.stageType);
     commitStageStarMedalForCurrentClear();
+    const prMini = recordProfileExpForStageClear(game, game.stage);
+    if (prMini.leveled) game.lifeGainDisplay = { text: `プロフィール Lv.${prMini.newLevel}！最大HPが伸びました`, timer: 220, color: '#aef' };
     game.stageResultData = {
       stage: game.stage,
       stageType: game.stageType,
@@ -953,11 +1035,16 @@ function killMiniBoss(mb) {
       kills: game.stageStats.kills,
       hits: game.stageStats.hits,
       maxCombo: game.stageStats.maxCombo,
+      clearRewardCoins,
+      clearRewardGems,
       rankBonus,
       rankGems: 0,
       score: game.score,
       starsEarned: _starsEarned2,
       starsSkippedMedal: _skipStars2,
+      profileExpGained: prMini.expGained,
+      profileLeveled: !!prMini.leveled,
+      profileNewLevel: prMini.newLevel,
     };
     game.stageResultTimer = 0; game.bullets = []; game.invaderBullets = []; game.stageClearAnimTimer = 80;
   }
@@ -1261,6 +1348,11 @@ function tryTriggerEvent() {
   game.eventCooldown = 600 + Math.floor(Math.random() * 400);
   game.currentEvent = EVENT_LIST[Math.floor(Math.random() * EVENT_LIST.length)];
   game.eventTimer = 300; playSound('event_start');
+  game.meteorEventLanes =
+    game.currentEvent.id === 'meteor'
+      ? Array.from({ length: 14 }, () => 20 + Math.random() * (W - 40))
+      : null;
+  if (game.currentEvent.id === 'meteor') triggerFlash(255, 35, 25, 0.32);
   if (game.currentEvent.id === 'supply') {
     const types = ['double', 'invincible', 'wide'];
     for (let i = 0; i < 5; i++) game.powerups.push({ x: Math.random() * (W - 24), y: -20 - i * 60, w: 24, h: 16, vy: 2, type: types[Math.floor(Math.random() * 3)] });
@@ -1273,13 +1365,32 @@ function tryTriggerEvent() {
 function updateEvent() {
   if (!game.currentEvent) return;
   game.eventTimer--;
-  if (game.currentEvent.id === 'meteor' && Math.random() < 0.08)
-    game.meteors.push({ x: Math.random() * W, y: -20, w: 16, h: 16, vy: 3 + Math.random() * 3, alive: true });
-  if (game.eventTimer <= 0) game.currentEvent = null;
+  if (game.currentEvent.id === 'meteor') {
+    // 約1.5秒は警告のみ→予測レーン→その後ディップ（見やすさ・回避のため）
+    const rainPhase = game.eventTimer <= 210;
+    if (rainPhase && Math.random() < 0.112)
+      game.meteors.push({
+        x: game.meteorEventLanes?.length
+          ? game.meteorEventLanes[Math.floor(Math.random() * game.meteorEventLanes.length)] + (Math.random() - 0.5) * 28
+          : Math.random() * W,
+        y: -28,
+        w: 22,
+        h: 30,
+        vy: 3.2 + Math.random() * 3.4,
+        alive: true,
+        rot: Math.random() * Math.PI * 2,
+      });
+  }
+  if (game.eventTimer <= 0) {
+    game.meteorEventLanes = null;
+    game.currentEvent = null;
+  }
 }
 function updateMeteors() {
   for (let i = game.meteors.length - 1; i >= 0; i--) {
-    const m = game.meteors[i]; m.y += m.vy;
+    const m = game.meteors[i];
+    m.y += m.vy;
+    m.rot = (m.rot || 0) + 0.14 + (m.vy || 4) * 0.028;
     if (m.y > H) { game.meteors.splice(i, 1); continue; }
     // 弾を消す
     for (let j = game.invaderBullets.length - 1; j >= 0; j--) {
@@ -1361,6 +1472,53 @@ function tryContinueFromGameOver() {
   return true;
 }
 
+/** ゲームオーバー「はじめから」：ステージ1・スコア／ラン統計リセット・HP全快 */
+function gameOverRetryFromStart() {
+  game.continueNoStarsThisRun = false;
+  game.bossRushModeActive = false;
+  game.endlessModeActive = false;
+  game.selectedBossAbility = null;
+  game.stageType = 'normal';
+  game.score = 0;
+  game.stage = 1;
+  game.startStage = 1;
+  game.nextLifeScore = 5000;
+  game.runStartCoins = game.coins | 0;
+  game.runEnemyKills = 0;
+  game.runPlayFrames = 0;
+  game.playerStats.hp = game.playerStats.maxHp;
+  game.lifeGainDisplay = null;
+  game.ultimateGauge = 0;
+  game.ultimateActive = false;
+  game.ultimateTimer = 0;
+  game.powerupActive = null;
+  game.powerupTimer = 0;
+  showMessage(null);
+  startBGM();
+  initStars();
+  updateHUD();
+  initStage();
+  game.state = 'playing';
+}
+
+/** ゲームオーバーからステージ選択マップへ（ポインタ／キー S 共通） */
+function gameOverGoStageSelect() {
+  showMessage(null);
+  game.continueNoStarsThisRun = false;
+  game.bossRushModeActive = false;
+  game.endlessModeActive = false;
+  game.stageSelectIdx = Math.min(game.stage, game.highestStage) - 1;
+  game.stageMapScrollOffset = getStageSelectIdealScroll(game.stageSelectIdx + 1, H, 478);
+  const pos = getStageSelectShipTarget(H, getStageSelectShipFollowStage(game.stageSelectIdx + 1, game.highestStage), 478, game.highestStage);
+  if (pos) {
+    game.stageCharX = pos.x;
+    game.stageCharY = pos.y;
+    game.stageCharTX = pos.x;
+    game.stageCharTY = pos.y;
+  }
+  game.state = 'stage_select';
+}
+
 function triggerGameOver() {
   const wasRecord = game.score > 0 && game.score >= (game.hiScores[0] || 0);
   game.gameOverWasRecord = wasRecord;
@@ -1439,6 +1597,8 @@ const drawDeps = {
   get ctx() { return ctx; },
   get W() { return W; },
   get H() { return H; },
+  /** paintFrame 内で game-store を import しないための参照（循環・TDZ 回避） */
+  get game() { return game; },
   get state() { return game.state; },
   get shakeTimer() { return game.shakeTimer; },
   get shakeIntensity() { return game.shakeIntensity; },
@@ -1460,7 +1620,7 @@ const drawDeps = {
   get BOSS_SELECT_DATA() { return BOSS_SELECT_DATA; },
   get IAP_PACKAGES() { return IAP_PACKAGES; },
   get NOTICES() { return NOTICES; },
-  get STARDUST_SHOP_ITEMS() { return STARDUST_SHOP_ITEMS; },
+  get STARDUST_SHOP_ITEMS() { return getStardustShopItems(); },
   applyLevelToAtkMult,
   applyLevelToStatAdd,
   buildEquipPool,
@@ -1497,6 +1657,7 @@ const drawDeps = {
   drawBossMinions,
   drawUFO,
   drawPowerups,
+  drawCoinPickups,
   drawPlayer,
   drawPets,
   drawBullets,
@@ -1513,6 +1674,8 @@ const drawDeps = {
   drawLifeGainDisplay,
   drawLevelUpDisplay,
   drawEventBanner,
+  drawMeteorRainEnvOverlay,
+  drawCombatPlayerVignette,
   drawMatPopups,
   drawStageClearAnim,
   drawHitFlash,
@@ -1524,7 +1687,6 @@ const drawDeps = {
   drawStardustShop,
   drawStageResult,
   bumpGachaAnimFrame: () => { game.gachaAnimFrame++; },
-  drawInvaderSprite,
   // Use functions from new modules
   drawPauseOverlay: () => drawPauseOverlay(),
   drawGameOverOverlay: () => drawGameOverOverlay(),
@@ -1555,7 +1717,7 @@ const screenDrawDeps = {
   get BOSS_SELECT_DATA() { return BOSS_SELECT_DATA; },
   get IAP_PACKAGES() { return IAP_PACKAGES; },
   get NOTICES() { return NOTICES; },
-  get STARDUST_SHOP_ITEMS() { return STARDUST_SHOP_ITEMS; },
+  get STARDUST_SHOP_ITEMS() { return getStardustShopItems(); },
   get ENEMY_PREVIEW_COLORS() { return ENEMY_PREVIEW_COLORS; },
   get ENEMY_PREVIEW_LABELS() { return ENEMY_PREVIEW_LABELS; },
   get FUEL_CAP() { return FUEL_CAP; },
@@ -1601,7 +1763,6 @@ const screenDrawDeps = {
 
 const entityDrawDeps = {
   get ctx() { return ctx; },
-  drawInvaderSprite,
 };
 
 const uiDrawDeps = {
@@ -1644,30 +1805,6 @@ function pickCharShipShape(item) {
   if (def >= 20 || hp >= 160) return 'heavy';
   if (atk >= 1.35) return 'heavy';
   return 'fighter';
-}
-
-
-
-
-
-function drawInvaderSprite(ctx, x, y, frame, row, overrideColor) {
-  const type = row <= 0 ? 0 : row <= 1 ? 1 : 2;
-  const planetCols = getPlanetEnemyColors(game.stage);
-  ctx.fillStyle = overrideColor || planetCols[type] || ['#f55', '#ff0', '#0ff'][type];
-  if (type === 0) {
-    ctx.fillRect(x + 10, y, 16, 6); ctx.fillRect(x + 4, y + 6, 28, 6); ctx.fillRect(x, y + 12, 36, 8);
-    if (frame === 0) { ctx.fillRect(x + 4, y + 20, 8, 6); ctx.fillRect(x + 24, y + 20, 8, 6); }
-    else { ctx.fillRect(x, y + 20, 8, 6); ctx.fillRect(x + 28, y + 20, 8, 6); }
-  } else if (type === 1) {
-    ctx.fillRect(x + 8, y, 20, 6); ctx.fillRect(x + 4, y + 6, 28, 6); ctx.fillRect(x, y + 12, 36, 6);
-    ctx.fillRect(x + 4, y + 18, 10, 6); ctx.fillRect(x + 22, y + 18, 10, 6);
-    if (frame === 0) { ctx.fillRect(x + 2, y + 20, 6, 6); ctx.fillRect(x + 28, y + 20, 6, 6); }
-    else { ctx.fillRect(x + 6, y + 22, 6, 4); ctx.fillRect(x + 24, y + 22, 6, 4); }
-  } else {
-    ctx.fillRect(x + 6, y, 24, 6); ctx.fillRect(x + 2, y + 6, 32, 6); ctx.fillRect(x, y + 12, 36, 8);
-    if (frame === 0) { ctx.fillRect(x + 2, y + 20, 8, 6); ctx.fillRect(x + 14, y + 20, 8, 6); ctx.fillRect(x + 26, y + 20, 8, 6); }
-    else { ctx.fillRect(x + 4, y + 20, 8, 6); ctx.fillRect(x + 18, y + 20, 8, 6); ctx.fillRect(x + 28, y + 22, 8, 4); }
-  }
 }
 
 
@@ -1762,6 +1899,8 @@ const handleKey = createHandleKey({
   chooseRoute,
   fireChargedShot,
   genMapRoutes,
+  gameOverRetryFromStart,
+  gameOverGoStageSelect,
   handleGachaResultPrimaryAction,
   initAudio,
   initStage,
@@ -1779,7 +1918,7 @@ const handleKey = createHandleKey({
   updateShopPanel,
 });
 bindDocumentKeys({
-  onKeyDown(code) { handleKey(code); },
+  onKeyDown(code, ev) { handleKey(code, ev); },
   onKeyUp(code) {
     if ((code === 'KeyZ' || code === 'Space') && game.state === 'playing') {
       if (game.chargeTimer >= CHARGE_MAX) { fireChargedShot(); }
@@ -1797,6 +1936,8 @@ registerPointerInput(canvas, {
   UI_BUTTONS,
   triggerFlash,
   tryContinueFromGameOver,
+  gameOverRetryFromStart,
+  gameOverGoStageSelect,
   showMessage,
   startBGM,
   initStars,
@@ -1843,6 +1984,7 @@ if (isDevUnlockAllEquips()) ensureAllEquipsOwnedForTest();
 loadSettings();
 loadInbox();
 game.ageVerified = localStorage.getItem('invader_age_verified') === '1';
+loadIapFlags();
 game.state = 'title';
 checkLoginBonus(playSound);
 startGameLoop({ runUpdate, draw, updateHUD, game, getCtx: () => ctx, getW: () => W, getH: () => H });

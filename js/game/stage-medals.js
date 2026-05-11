@@ -32,6 +32,22 @@ export function computeStageStarMedal(hits, maxCombo, stageType = 'normal') {
   return 1;
 }
 
+/**
+ * ステージクリア画面用：★と評価スコアの対応（日本語・短行）。
+ * @param {string} [stageType]
+ * @returns {string[]}
+ */
+export function getStageStarLegendLines(stageType = 'normal') {
+  const lines = [
+    '★の段階：〜24点→★1／25〜49→★2／50点〜→★3',
+    '被弾：0→40点・1→25・2〜3→10・4回～→0',
+    'コンボ：3→+10・5→+20・8→+30',
+  ];
+  if (stageType === 'boss_rush') lines.push('ボス連戦：評価+20');
+  else if (stageType === 'survival') lines.push('サバイバル：評価+15');
+  return lines;
+}
+
 export function readStageStarMedals() {
   const o = readJsonObject('invader_stage_stars', {});
   return o && typeof o === 'object' && !Array.isArray(o) ? o : {};

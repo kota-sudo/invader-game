@@ -1,7 +1,6 @@
 import { game, actions } from './game-store.js';
 import { EXP_TABLE, LEVEL_BONUSES, UPGRADE_POOL } from '../game-data.js';
 import { playSound } from './audio.js';
-
 export function isUpgradeMaxed(id) {
   switch (id) {
     case 'speed': return game.playerUpgrades.speed >= 4;

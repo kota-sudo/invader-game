@@ -10,7 +10,7 @@ import {
   computeZukanGridMetrics,
 } from '../draw/draw-screen-gacha.js';
 import { canDailyGacha, doDailyGacha, doGachaPull, doPremiumPull } from '../game/gacha.js';
-import { STARDUST_SHOP_ITEMS, applyStardustShop as _applyStardustShop } from '../game/stardust-shop.js';
+import { getStardustShopItems, applyStardustShop as _applyStardustShop } from '../game/stardust-shop.js';
 import { playSound } from '../game/audio.js';
 
 const GATE_OPEN = 60, GATE_WARPOUT = 50, GATE_FADEIN = 40;
@@ -249,10 +249,11 @@ export function handleGachaRatesClick(_mx, _my) {
 
 /** @returns {boolean} */
 export function handleStardustShopClick(mx, my) {
-  const itemH = 118, startY = 124, itemW = 600, startX = (W - itemW) / 2;
+  const items = getStardustShopItems();
+  const itemH = 118, startY = 148, itemW = 600, startX = (W - itemW) / 2;
   const costBoxW = 120, costBoxH = 48, rightPad = 12;
-  for (let i = 0; i < STARDUST_SHOP_ITEMS.length; i++) {
-    const item = STARDUST_SHOP_ITEMS[i];
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
     const y = startY + i * (itemH + 10);
     const canAfford = game.gachaStardust >= item.cost;
     const costBoxX = startX + itemW - rightPad - costBoxW;

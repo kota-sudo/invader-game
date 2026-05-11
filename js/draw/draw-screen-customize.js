@@ -6,6 +6,7 @@ import { CANVAS_W as W, CANVAS_H as H } from '../game/constants.js';
 import {
   CHAR_POOL,
   EQUIP_POOL,
+  getStageBattleBackground,
   MISSION_POOL,
   PET_POOL,
   RARITY_COLORS,
@@ -26,7 +27,8 @@ let pickCharShipShape;
 let syncFuel;
 
 const CUSTOMIZE_FONT = "Orbitron, 'Zen Kaku Gothic New', sans-serif";
-const CUSTOMIZE_STAGE_BG_SRC = './assets/customize-stage-mars.png';
+/** 火星で戦闘背景の読み込みが間に合わないときの互換フォールバック */
+const CUSTOMIZE_STAGE_BG_FALLBACK = './assets/customize-stage-mars.png';
 
 export function setCustomizeScreenDrawDeps(deps) {
   drawDeps = deps;
@@ -230,14 +232,14 @@ export function drawCustomizeScreen() {
         ctx.strokeStyle = 'rgba(120,200,255,0.55)'; ctx.lineWidth = 1.3;
         ctx.strokeRect(tx + 4, ty + 4, tw - 8, th - 8);
       }
-      ctx.globalAlpha = active ? 1 : (hov ? 0.82 : 0.48);
+      ctx.globalAlpha = active ? 1 : (hov ? 0.82 : 0.58);
       const tabDim = 'rgba(188,206,232,0.88)';
       ctx.fillStyle = active ? '#fffce8' : (hov ? '#f4f8ff' : tabDim);
       if (active && !lowFx) { ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; }
       const tabText = tab.label;
       ctx.font = `900 13px ${CUSTOMIZE_FONT}`; ctx.textAlign = 'right';
       ctx.fillText(tab.icon, tx + tw / 2 - 27, ty + 24);
-      ctx.font = `900 ${tabText.length > 4 ? 9 : 10}px ${CUSTOMIZE_FONT}`; ctx.textAlign = 'left';
+      ctx.font = `900 ${tabText.length > 4 ? 11 : 12}px ${CUSTOMIZE_FONT}`; ctx.textAlign = 'left';
       ctx.fillText(tabText, tx + tw / 2 - 18, ty + 23);
       ctx.shadowBlur = 0;
       if (active && tab.id === 'ui_gach') {
@@ -346,7 +348,7 @@ export function drawCustomizeScreen() {
       ctx.restore();
       ctx.fillStyle = rCol + '22'; ctx.strokeStyle = rCol + '88'; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.roundRect(MX + 104, r1Y + 2, 34, 16, 4); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = rCol; ctx.font = `900 9px ${CUSTOMIZE_FONT}`; ctx.textAlign = 'center';
+      ctx.fillStyle = rCol; ctx.font = `900 10px ${CUSTOMIZE_FONT}`; ctx.textAlign = 'center';
       ctx.fillText(char.rarity, MX + 121, r1Y + 13);
       const equipPanelX = MX + Math.floor(CW * 0.64);
       const equipPanelW = CW - (equipPanelX - MX) - 14;
@@ -354,12 +356,12 @@ export function drawCustomizeScreen() {
       ctx.fillStyle = '#fffdf5'; ctx.font = `900 15px ${CUSTOMIZE_FONT}`; ctx.textAlign = 'left';
       ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
       ctx.fillText(char.label, MX + 148, r1Y + 15); ctx.shadowBlur = 0;
-      ctx.fillStyle = 'rgba(190,225,255,0.96)'; ctx.font = `900 8px ${CUSTOMIZE_FONT}`;
+      ctx.fillStyle = 'rgba(190,225,255,0.96)'; ctx.font = `900 10px ${CUSTOMIZE_FONT}`;
       ctx.fillText('TYPE : ATTACKER', MX + 148, r1Y + 32);
       ctx.fillStyle = 'rgba(8,12,24,0.84)';
       ctx.strokeStyle = 'rgba(120,190,255,0.34)';
       ctx.beginPath(); ctx.roundRect(MX + 112, eY + eH - 54, 116, 24, 4); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = 'rgba(220,235,255,0.92)'; ctx.font = `900 9px ${CUSTOMIZE_FONT}`; ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(220,235,255,0.92)'; ctx.font = `900 10px ${CUSTOMIZE_FONT}`; ctx.textAlign = 'center';
       ctx.fillText('機体詳細  ›', MX + 170, eY + eH - 38);
       ctx.strokeStyle = 'rgba(120,190,255,0.22)';
       ctx.beginPath(); ctx.moveTo(MX + 238, eY + 36); ctx.lineTo(MX + 238, eY + eH - 18); ctx.stroke();
@@ -400,7 +402,7 @@ export function drawCustomizeScreen() {
           ctx.fillRect(sbx, sby + 11, Math.max(barMinW, sbw * ratio), 8); ctx.shadowBlur = 0;
           ctx.fillStyle = 'rgba(0,0,0,0.62)';
           ctx.font = `900 10px ${CUSTOMIZE_FONT}`; ctx.textAlign = 'right';
-          ctx.fillText(String(s.v), sbx + Math.max(barMinW + 14, sbw * ratio) - 2, sby + 18);
+          ctx.fillText(String(s.v), sbx + sbw - 2, sby + 18);
         } else {
           ctx.fillStyle = 'rgba(80,90,110,0.45)';
           ctx.fillRect(sbx, sby + 11, barMinW, 8);
@@ -429,17 +431,17 @@ export function drawCustomizeScreen() {
         ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
         ctx.font = `900 18px ${CUSTOMIZE_FONT}`; ctx.textAlign = 'center';
         ctx.fillText(owned ? '◆' : '◇', sx + slotSize / 2, slotY + 25); ctx.shadowBlur = 0;
-        ctx.font = `900 8px ${CUSTOMIZE_FONT}`;
-        ctx.fillText(owned && eq ? eq.rarity : '空き', sx + slotSize / 2, slotY + 35);
+        ctx.font = `900 10px ${CUSTOMIZE_FONT}`;
+        ctx.fillText(owned && eq ? eq.rarity : '空き', sx + slotSize / 2, slotY + 36);
       }
       ctx.fillStyle = 'rgba(18,12,20,0.48)';
       ctx.strokeStyle = 'rgba(255,90,55,0.12)';
-      const setFxY = eY + eH - 34;
-      ctx.beginPath(); ctx.roundRect(equipPanelX + 14, setFxY, equipPanelW - 28, 15, 5); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = 'rgba(120,190,255,0.88)'; ctx.font = `900 8px ${CUSTOMIZE_FONT}`; ctx.textAlign = 'left';
-      ctx.fillText('セット効果', equipPanelX + 24, setFxY + 11);
-      ctx.fillStyle = 'rgba(255,120,75,0.95)'; ctx.textAlign = 'right';
-      ctx.fillText(eids.filter(Boolean).length ? '攻撃 +15%' : 'なし', equipPanelX + equipPanelW - 24, setFxY + 11);
+      const setFxY = eY + eH - 36;
+      ctx.beginPath(); ctx.roundRect(equipPanelX + 14, setFxY, equipPanelW - 28, 18, 5); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(200,225,255,0.95)'; ctx.font = `900 10px ${CUSTOMIZE_FONT}`; ctx.textAlign = 'left';
+      ctx.fillText('セット効果', equipPanelX + 24, setFxY + 13);
+      ctx.fillStyle = 'rgba(255,150,95,0.98)'; ctx.textAlign = 'right';
+      ctx.fillText(eids.filter(Boolean).length ? '攻撃 +15%' : 'なし', equipPanelX + equipPanelW - 24, setFxY + 13);
 
     }
 
@@ -459,7 +461,15 @@ export function drawCustomizeScreen() {
     ctx.save();
     ctx.beginPath();
     ctx.roundRect(MX + 1, infoY + 1, CW - 2, stageBandH, 10);
-    const stageBgImg = drawDeps.getImage ? drawDeps.getImage(CUSTOMIZE_STAGE_BG_SRC) : null;
+    const battleBgPath = getStageBattleBackground(game.startStage);
+    let stageBgImg = battleBgPath && drawDeps.getImage ? drawDeps.getImage(battleBgPath) : null;
+    if (
+      (!stageBgImg || !stageBgImg.complete || stageBgImg.naturalWidth <= 0)
+      && pStage.name === 'MARS'
+      && drawDeps.getImage
+    ) {
+      stageBgImg = drawDeps.getImage(CUSTOMIZE_STAGE_BG_FALLBACK);
+    }
     const hasStageBg = stageBgImg && stageBgImg.complete && stageBgImg.naturalWidth > 0;
     if (hasStageBg) {
       const iw = stageBgImg.naturalWidth;
@@ -490,13 +500,16 @@ export function drawCustomizeScreen() {
       ctx.restore();
     }
     if (!hasStageBg) {
+      ctx.fillStyle = pStage.bg || '#040208';
+      ctx.fillRect(MX, infoY, CW, stageBandH);
       const skyG = ctx.createLinearGradient(MX, infoY, MX + CW, infoY + stageBandH);
-      skyG.addColorStop(0, 'rgba(6,3,16,0.98)');
-      skyG.addColorStop(0.5, 'rgba(28,8,14,0.94)');
-      skyG.addColorStop(1, 'rgba(62,14,8,0.99)');
+      skyG.addColorStop(0, 'rgba(0,0,0,0.25)');
+      skyG.addColorStop(0.45, pStage.nebula || 'rgba(40,20,10,0.35)');
+      skyG.addColorStop(1, 'rgba(0,0,0,0.72)');
       ctx.fillStyle = skyG; ctx.fillRect(MX, infoY, CW, stageBandH);
       const mBase = infoY + stageBandH - 2;
-      ctx.fillStyle = 'rgba(12,3,6,0.99)';
+      ctx.fillStyle = pStage.ground || '#331100';
+      ctx.globalAlpha = 0.92;
       ctx.beginPath(); ctx.moveTo(MX - 4, mBase + 8);
       for (let mi = 0; mi <= 14; mi++) {
         const px = MX - 6 + (mi / 14) * (CW + 12);
@@ -504,7 +517,8 @@ export function drawCustomizeScreen() {
         ctx.lineTo(px, mBase + 8 - ph);
       }
       ctx.lineTo(MX + CW + 6, mBase + 8); ctx.lineTo(MX + CW + 6, mBase + 40); ctx.lineTo(MX - 4, mBase + 40); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = 'rgba(90,22,12,0.55)';
+      ctx.globalAlpha = 0.5;
+      ctx.fillStyle = pStage.accent || '#aa2200';
       ctx.beginPath(); ctx.moveTo(MX - 8, mBase + 4);
       for (let mi = 0; mi <= 10; mi++) {
         const px = MX - 14 + (mi / 10) * (CW + 28);
@@ -512,6 +526,7 @@ export function drawCustomizeScreen() {
         ctx.lineTo(px, mBase + 4 - ph);
       }
       ctx.lineTo(MX + CW + 18, mBase + 4); ctx.lineTo(MX + CW + 18, mBase + 36); ctx.lineTo(MX - 8, mBase + 36); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 1;
     }
     if (!lowFx) {
       const emT = t * 38;
@@ -551,8 +566,25 @@ export function drawCustomizeScreen() {
     ctx.fillText(`${pStage.kanji}  ${pStage.name}`, W / 2, stageTitleY + 14); ctx.shadowBlur = 0;
     ctx.save();
     ctx.globalAlpha = 0.88;
-    ctx.fillStyle = 'rgba(245,248,255,0.96)'; ctx.font = `900 10px ${CUSTOMIZE_FONT}`;
-    ctx.fillText('ミッション　ノーダメージ / 2回攻撃 / 1ターン', W / 2, stageTitleY + 34);
+    const m1 = 'ミッション';
+    const m2 = 'ノーダメージ / 2回攻撃 / 1ターン';
+    ctx.font = `900 10px ${CUSTOMIZE_FONT}`;
+    const mw1 = ctx.measureText(m1).width;
+    ctx.font = `900 12px ${CUSTOMIZE_FONT}`;
+    const mw = Math.max(mw1, ctx.measureText(m2).width);
+    const padX = 14;
+    const pillBgY = stageTitleY + 18;
+    const pillBgH = 36;
+    ctx.fillStyle = 'rgba(4,8,18,0.58)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(W / 2 - mw / 2 - padX, pillBgY, mw + padX * 2, pillBgH, 8);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(210,220,235,0.92)'; ctx.font = `900 10px ${CUSTOMIZE_FONT}`;
+    ctx.fillText(m1, W / 2, stageTitleY + 30);
+    ctx.fillStyle = 'rgba(248,250,255,0.98)'; ctx.font = `900 12px ${CUSTOMIZE_FONT}`;
+    ctx.fillText(m2, W / 2, stageTitleY + 44);
     ctx.restore();
 
     const summaryY = Math.max(infoY + 112, stageSelY - 72);
@@ -578,14 +610,14 @@ export function drawCustomizeScreen() {
     ctx.fillText(statusText, summaryX + summaryW / 6, summaryY + 22);
     ctx.fillStyle = statusColor; ctx.font = `900 15px ${CUSTOMIZE_FONT}`;
     ctx.fillText(`勝率 ${winPct}%`, summaryX + summaryW / 2, summaryY + 22);
-    ctx.fillStyle = 'rgba(190,210,230,0.9)'; ctx.font = `900 10px ${CUSTOMIZE_FONT}`;
+    ctx.fillStyle = 'rgba(190,210,230,0.94)'; ctx.font = `900 11px ${CUSTOMIZE_FONT}`;
     ctx.fillText(`戦力 ${curPower} / ${enemyPower}`, summaryX + summaryW * 5 / 6, summaryY + 22);
 
-    const rewardY = stageSelY - 24;
+    const rewardY = stageSelY - 26;
     ctx.fillStyle = 'rgba(4,6,14,0.78)'; ctx.strokeStyle = 'rgba(255,110,70,0.18)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.roundRect(MX + 10, rewardY, CW - 20, 18, 4); ctx.fill(); ctx.stroke();
-    ctx.font = `900 9px ${CUSTOMIZE_FONT}`; ctx.textAlign = 'left';
-    const rewardTextY = rewardY + 12;
+    ctx.beginPath(); ctx.roundRect(MX + 10, rewardY, CW - 20, 22, 5); ctx.fill(); ctx.stroke();
+    ctx.font = `900 11px ${CUSTOMIZE_FONT}`; ctx.textAlign = 'left';
+    const rewardTextY = rewardY + 15;
     const rewardStartX = MX + 250;
     ctx.fillStyle = 'rgba(150,210,255,0.98)';
     ctx.fillText(`消費 🧃${drawDeps.FUEL_COST_PER_RUN}`, rewardStartX, rewardTextY);
@@ -669,20 +701,28 @@ export function drawCustomizeScreen() {
       drawDeployPanel(4); ctx.stroke(); ctx.shadowBlur = 0;
       ctx.restore();
     });
-    const pillW = sortieOk ? 96 : 74, pillH = 21, pillX = btnCx - pillW / 2, pillY = btnY - pillH - 14;
-    ctx.save();
-    ctx.fillStyle = sortieOk ? 'rgba(5,28,14,0.96)' : 'rgba(36,8,10,0.96)';
-    ctx.strokeStyle = sortieOk ? 'rgba(70,255,150,0.92)' : 'rgba(255,110,110,0.92)';
-    ctx.lineWidth = 1.5;
-    ctx.shadowColor = sortieOk ? '#44ff88' : '#ff3333'; ctx.shadowBlur = lowFx ? 3 : 6;
-    ctx.beginPath(); ctx.roundRect(pillX, pillY, pillW, pillH, 10); ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0;
-    ctx.fillStyle = sortieOk ? '#d8ffe8' : '#ffe0e0'; ctx.font = `900 10px ${CUSTOMIZE_FONT}`; ctx.textAlign = 'center';
-    ctx.fillText(sortieOk ? '推奨OK！' : '危険！', btnCx, pillY + 15);
-    ctx.restore();
+    const showDeployPill = !tierOk;
+    const pillMsg = !sortieOk ? '危険！' : '注意';
+    const pillW = !sortieOk ? 74 : 56;
+    const pillH = 21;
+    const pillX = btnCx - pillW / 2;
+    const pillY = btnY - pillH - 14;
+    if (showDeployPill) {
+      ctx.save();
+      const pillDanger = !sortieOk;
+      ctx.fillStyle = pillDanger ? 'rgba(36,8,10,0.96)' : 'rgba(36,28,8,0.96)';
+      ctx.strokeStyle = pillDanger ? 'rgba(255,110,110,0.92)' : 'rgba(255,200,90,0.92)';
+      ctx.lineWidth = 1.5;
+      ctx.shadowColor = pillDanger ? '#ff3333' : '#ffcc44'; ctx.shadowBlur = lowFx ? 3 : 6;
+      ctx.beginPath(); ctx.roundRect(pillX, pillY, pillW, pillH, 10); ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0;
+      ctx.fillStyle = pillDanger ? '#ffe0e0' : '#fff4d8'; ctx.font = `900 10px ${CUSTOMIZE_FONT}`; ctx.textAlign = 'center';
+      ctx.fillText(pillMsg, btnCx, pillY + 15);
+      ctx.restore();
+    }
     ctx.fillStyle = '#ffffff'; ctx.font = `900 26px ${CUSTOMIZE_FONT}`; ctx.textAlign = 'center';
     ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
     ctx.fillText('出 撃', btnCx, btnCy - 4); ctx.shadowBlur = 0;
-    ctx.fillStyle = 'rgba(255,230,205,0.96)'; ctx.font = `900 9px ${CUSTOMIZE_FONT}`;
+    ctx.fillStyle = 'rgba(255,230,205,0.96)'; ctx.font = `900 10px ${CUSTOMIZE_FONT}`;
     ctx.fillText('タップして開始', btnCx, btnCy + 17);
     ctx.textAlign = 'left';
   } catch (e) { console.error('[drawCustomize:start]', e); }

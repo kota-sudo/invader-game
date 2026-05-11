@@ -34,7 +34,8 @@ export function drawShipShape(ctx, x, y, w, h, shapeId, fillColor = null, rarity
     ctx.beginPath(); ctx.roundRect(rx, ry, rw, rh, r); ctx.fill();
     ctx.strokeStyle = `rgba(255,255,255,${fx.strokeA})`; ctx.lineWidth = 1.0;
     ctx.stroke();
-    ctx.globalAlpha = 0.18;
+    /* ハイライトはごく弱く（当たり枠／デバッグ感を抑える） */
+    ctx.globalAlpha = 0.045;
     ctx.fillStyle = '#fff';
     ctx.beginPath(); ctx.roundRect(rx + 1, ry + 1, rw - 2, Math.max(2, rh * 0.22), Math.max(1, r - 1)); ctx.fill();
     ctx.globalAlpha = 1;

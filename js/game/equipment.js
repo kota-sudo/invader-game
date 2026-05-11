@@ -1,4 +1,5 @@
 import { game } from './game-store.js';
+import { getProfileHpBonusPoints } from './profile-progress.js';
 import { CHAR_POOL, EQUIP_POOL, PET_POOL, WEAPON_GACHA_POOL } from '../game-data.js';
 import { applyLevelToAtkMult, applyLevelToStatAdd, getItemLevelBonus } from './gacha-level-math.js';
 import { safeLocalStorageSetItem } from './storage-helpers.js';
@@ -199,7 +200,8 @@ export function computeBaseStats() {
   const charDef = CHAR_POOL.find(c => c.id === 'char_basic');
   const char = CHAR_POOL.find(c => c.id === game.playerLoadout.charId && game.gachaInventory[c.id]) || charDef;
   const cBonus = char && char.id ? getItemLevelBonus(char.id) : 0;
-  let hp = applyLevelToStatAdd(char.hp, cBonus);
+  const profileHp = getProfileHpBonusPoints(game.profileLevel);
+  let hp = applyLevelToStatAdd(char.hp, cBonus) + profileHp;
   let atk = applyLevelToAtkMult(char.atk, cBonus);
   let def = applyLevelToStatAdd(char.def, cBonus);
   let crit = applyLevelToStatAdd(char.crit, cBonus);

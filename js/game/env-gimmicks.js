@@ -39,7 +39,17 @@ export function updateEnvGimmicks() {
       if (game.meteorRainWarning === 0) game.meteorRainTimer = 360;
     } else if (game.meteorRainTimer > 0) {
       game.meteorRainTimer--;
-      if (Math.random() < 0.18) game.meteors.push({ x: Math.random() * W, y: -20, w: 14, h: 14, vy: 4 + Math.random() * 4, alive: true });
+      if (Math.random() < 0.18) {
+        game.meteors.push({
+          x: Math.random() * W,
+          y: -26,
+          w: 20,
+          h: 28,
+          vy: 4 + Math.random() * 4,
+          alive: true,
+          rot: Math.random() * Math.PI * 2,
+        });
+      }
     } else if (Math.random() < 0.00055) {
       game.meteorRainWarning = 120;
     }
@@ -110,23 +120,13 @@ export function updateEnvGimmicks() {
 
 export function drawEnvGimmicks() {
   const ctx = drawDeps.ctx;
-  // 隕石雨警告
-  if (game.meteorRainWarning > 0) {
-    const blink = Math.floor(game.meteorRainWarning / 8) % 2 === 0;
-    if (blink) {
-      ctx.fillStyle = 'rgba(255,80,0,0.18)'; ctx.fillRect(0, 0, W, H);
-      ctx.fillStyle = '#ff5500'; ctx.font = 'bold 18px Orbitron,Courier New'; ctx.textAlign = 'center';
-      ctx.shadowColor = '#ff5500'; ctx.shadowBlur = 20;
-      ctx.fillText('⚠ METEOR RAIN INCOMING ⚠', W / 2, H / 2 - 10);
-      ctx.shadowBlur = 0; ctx.textAlign = 'left';
-    }
-  }
+  // 隕石雨警告 UI は機体・弾に隠れないよう draw-ui の drawMeteorRainEnvOverlay で描画
   for (const gz of game.gravityZones) {
-    const a = Math.min(1, gz.timer / 80) * 0.65;
+    const a = Math.min(1, gz.timer / 80) * 0.82;
     ctx.globalAlpha = a;
-    ctx.strokeStyle = '#f80'; ctx.lineWidth = 1.5; ctx.shadowColor = '#f80'; ctx.shadowBlur = 10;
+    ctx.strokeStyle = '#f80'; ctx.lineWidth = 2; ctx.shadowColor = '#f80'; ctx.shadowBlur = 14;
     ctx.beginPath(); ctx.arc(gz.x, gz.y, gz.r, 0, Math.PI * 2); ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,150,0,0.5)'; ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(255,170,40,0.62)'; ctx.lineWidth = 1.25;
     ctx.beginPath(); ctx.arc(gz.x, gz.y, gz.r * 0.55, gz.angle, gz.angle + Math.PI * 1.3); ctx.stroke();
     ctx.beginPath(); ctx.arc(gz.x, gz.y, gz.r * 0.28, gz.angle + Math.PI, gz.angle + Math.PI * 2.3); ctx.stroke();
     ctx.fillStyle = '#f80'; ctx.font = '9px Orbitron,Courier New'; ctx.textAlign = 'center';
@@ -134,12 +134,12 @@ export function drawEnvGimmicks() {
     ctx.textAlign = 'left'; ctx.globalAlpha = 1;
   }
   for (const ef of game.emFields) {
-    const a = Math.min(1, ef.timer / 80) * 0.7;
+    const a = Math.min(1, ef.timer / 80) * 0.82;
     ctx.globalAlpha = a;
     const grad = ctx.createRadialGradient(ef.x, ef.y, 0, ef.x, ef.y, ef.r);
-    grad.addColorStop(0, 'rgba(0,200,255,0.14)'); grad.addColorStop(1, 'rgba(0,200,255,0)');
+    grad.addColorStop(0, 'rgba(0,220,255,0.2)'); grad.addColorStop(1, 'rgba(0,200,255,0)');
     ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(ef.x, ef.y, ef.r, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = '#0cf'; ctx.lineWidth = 2; ctx.shadowColor = '#0cf'; ctx.shadowBlur = 14;
+    ctx.strokeStyle = '#5ef'; ctx.lineWidth = 2.25; ctx.shadowColor = '#0cf'; ctx.shadowBlur = 18;
     ctx.beginPath(); ctx.arc(ef.x, ef.y, ef.r, 0, Math.PI * 2); ctx.stroke(); ctx.shadowBlur = 0;
     if (game.frameCount % 5 < 2) {
       const arc = Math.random() * Math.PI * 2;

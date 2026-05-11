@@ -4,6 +4,7 @@ import {
   computeStageRankTotal,
   rankFromTotal,
   computeStageStarMedal,
+  getStageStarLegendLines,
 } from '../js/game/stage-medals.js';
 
 test('rank total matches legacy calcRank scoring', () => {
@@ -20,4 +21,10 @@ test('stars follow same total thresholds as letter rank (B=2, A/S=3)', () => {
   assert.equal(computeStageStarMedal(0, 3, 'normal'), 3); // total 50 → A
   assert.equal(computeStageStarMedal(4, 0, 'normal'), 1); // total 0 → C
   assert.equal(computeStageStarMedal(0, 8, 'boss_rush'), 3); // 40+30+20
+});
+
+test('getStageStarLegendLines includes stage-type bonus line when relevant', () => {
+  assert.equal(getStageStarLegendLines('normal').length, 3);
+  assert.ok(getStageStarLegendLines('boss_rush').some((s) => s.includes('ボス連戦')));
+  assert.ok(getStageStarLegendLines('survival').some((s) => s.includes('サバイバル')));
 });

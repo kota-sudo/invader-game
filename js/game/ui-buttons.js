@@ -67,7 +67,7 @@ export function createUiButtons(deps) {
     notifications: [{ ...BACK_BTN, label: '◀ 戻る', action: () => { game.state = 'customize'; } }],
     inbox: [{ ...BACK_BTN, label: '◀ 戻る', action: () => { game.state = 'customize'; } }],
     events: [{ ...BACK_BTN, label: '◀ 戻る', action: () => { game.state = 'customize'; } }],
-    iap: [{ ...BACK_BTN, label: '◀ 戻る', action: () => { game.state = 'customize'; } }],
+    iap: [{ ...BACK_BTN, label: '◀ 戻る', action: () => { game.iapModal = null; game.state = 'customize'; } }],
     gacha: [
       {
         ...BACK_BTN,

@@ -1,3 +1,5 @@
+import { PROFILE_MAX_LEVEL } from './profile-progress.js';
+
 /**
  * 改ざん耐性はサーバなしでは限定的（ローカルストレージはユーザーが編集可能）。
  * ランキング・本番課金などはサーバ側検証が必須。
@@ -25,4 +27,6 @@ export function applySaveSanityClamps(game) {
   game.highestStage = clampInt(game.highestStage, 1, MAX_INT);
   game.playerLevel = clampInt(game.playerLevel, 1, 9999);
   game.exp = clampInt(game.exp, 0, MAX_INT);
+  game.profileLevel = clampInt(game.profileLevel, 1, PROFILE_MAX_LEVEL);
+  game.profileExp = clampInt(game.profileExp, 0, MAX_INT);
 }

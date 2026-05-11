@@ -2,7 +2,7 @@
  * Keyboard routing by game.state (depends on main flow + gacha/shop helpers).
  */
 import { SHOP_ITEMS, WEAPON_GACHA_POOL } from '../game-data.js';
-import { CHARGE_MAX, CANVAS_H as H } from './constants.js';
+import { CHARGE_MAX, CANVAS_H as H, STAGE_RESULT_BUTTON_MIN_TIMER } from './constants.js';
 import { clearShopHexSel } from './draw-shop-hex.js';
 import {
   canPetUpgrade,
@@ -14,12 +14,19 @@ import {
   tryPetLevelUp,
 } from './gacha.js';
 import { game } from './game-store.js';
+import { getStardustShopItems } from './stardust-shop.js';
 import {
   getStageSelectIdealScroll,
   getStageSelectShipFollowStage,
   getStageSelectShipTarget,
 } from './stage-select-map-geometry.js';
 import { cycleWeapon } from './weapon.js';
+import {
+  digitFromKeyCode,
+  appendCcDigit,
+  backspaceCc,
+  cycleCcFocus,
+} from './iap-cc-input.js';
 
 const ZUKAN_GRID_COLS = 4;
 
@@ -34,6 +41,8 @@ export function createHandleKey(deps) {
     chooseRoute,
     fireChargedShot,
     genMapRoutes,
+    gameOverRetryFromStart,
+    gameOverGoStageSelect,
     handleGachaResultPrimaryAction,
     initAudio,
     initStage,
@@ -51,7 +60,25 @@ export function createHandleKey(deps) {
     updateShopPanel,
   } = deps;
 
-  return function handleKey(code) {
+  return function handleKey(code, ev) {
+  if (game.state === 'iap' && game.iapModal?.phase === 'cc' && game.iapCcFocus && game.iapCcForm) {
+    if (code === 'Backspace') {
+      backspaceCc(game.iapCcForm, game.iapCcFocus);
+      game.iapCcError = null;
+      return;
+    }
+    if (code === 'Tab') {
+      game.iapCcFocus = cycleCcFocus(game.iapCcFocus);
+      if (ev && typeof ev.preventDefault === 'function') ev.preventDefault();
+      return;
+    }
+    const d = digitFromKeyCode(code);
+    if (d !== null) {
+      appendCcDigit(game.iapCcForm, game.iapCcFocus, d);
+      game.iapCcError = null;
+      return;
+    }
+  }
   // ポーズ
   if (code === 'Escape') {
     if (game.state === 'playing') { game.paused = !game.paused; return; }
@@ -106,7 +133,28 @@ export function createHandleKey(deps) {
     if (game.state === 'notifications') { game.state = 'customize'; return; }
     if (game.state === 'inbox') { game.state = 'customize'; return; }
     if (game.state === 'events') { game.state = 'customize'; return; }
-    if (game.state === 'iap') { game.state = 'customize'; return; }
+    if (game.state === 'iap') {
+      if (game.iapModal) {
+        const ph = game.iapModal.phase;
+        const pkg = game.iapModal.pkg;
+        if (ph === 'success') { game.iapModal = null; return; }
+        if (ph === 'payment') { game.iapModal = { pkg, phase: 'confirm' }; return; }
+        if (ph === 'cc' || ph === 'cvs') {
+          if (ph === 'cc') {
+            game.iapCcForm = { card: '', exp: '', cvv: '' };
+            game.iapCcFocus = null;
+            game.iapCcError = null;
+          }
+          game.iapModal = { pkg, phase: 'payment' };
+          return;
+        }
+        if (ph === 'confirm') { game.iapModal = null; return; }
+        game.iapModal = null;
+        return;
+      }
+      game.state = 'customize';
+      return;
+    }
   }
   if (game.paused && game.state === 'playing' && (code === 'Enter' || code === 'NumpadEnter' || code === 'Space')) {
     game.paused = false;
@@ -158,7 +206,10 @@ export function createHandleKey(deps) {
   if (game.state === 'stardust_shop') {
     if (code === 'Escape') { game.state = 'gacha'; return; }
     if (code === 'ArrowUp' || code === 'KeyW') game.stardustShopCursor = Math.max(0, game.stardustShopCursor - 1);
-    else if (code === 'ArrowDown' || code === 'KeyS') game.stardustShopCursor = Math.min(2, game.stardustShopCursor + 1);
+    else if (code === 'ArrowDown' || code === 'KeyS') {
+      const n = getStardustShopItems().length;
+      game.stardustShopCursor = Math.min(Math.max(0, n - 1), game.stardustShopCursor + 1);
+    }
     else if (code === 'Space' || code === 'Enter') applyStardustShop(game.stardustShopCursor);
     return;
   }
@@ -175,7 +226,7 @@ export function createHandleKey(deps) {
     return;
   }
   if (game.state === 'stage_result') {
-    if (game.stageResultTimer > 30) {
+    if (game.stageResultTimer > STAGE_RESULT_BUTTON_MIN_TIMER) {
       if (code === 'KeyR') {
         const st = game.stageResultData?.stage;
         game.stageResultData = null;
@@ -421,14 +472,18 @@ export function createHandleKey(deps) {
     return;
   }
   if ((code === 'KeyR' || code === 'ArrowUp') && game.state === 'gameover') {
-    game.continueNoStarsThisRun = false;
-    showMessage(null); startBGM(); game.stage = game.startStage; initStars(); updateHUD(); initStage(); game.state = 'playing';
+    gameOverRetryFromStart();
+    return;
   }
   if (code === 'KeyC' && game.state === 'gameover') {
     if (tryContinueFromGameOver()) return;
   }
   if (code === 'KeyB' && game.state === 'gameover' && game.selectedBossAbility) {
     showMessage(null); game.bossRushModeActive = true; game.endlessModeActive = false; startGame(); return;
+  }
+  if (code === 'KeyS' && game.state === 'gameover') {
+    gameOverGoStageSelect();
+    return;
   }
   if (game.state === 'title' && (code === 'KeyC' || code === 'Space' || code === 'Enter')) {
     beginTitleFromTap();

@@ -5,7 +5,7 @@
 
 import { game, readTitleBackgroundImageSrc } from '../game/game-store.js';
 import { getImage } from '../game/image-cache.js';
-import { CANVAS_W as W, CANVAS_H as H, POWERUP_DURATION } from '../game/constants.js';
+import { CANVAS_W as W, CANVAS_H as H, POWERUP_DURATION, CHARGE_MAX } from '../game/constants.js';
 import { getTitlePromptY, getTitleCoreGuideY } from '../game/title-layout.js';
 
 /** タイトル画面カラー統一（仕様⑦）。メニューは赤ネオン、TAP 誘導のみクールブルー（コンセプト参照） */
@@ -184,7 +184,7 @@ function drawPauseNeonLine(ctx, cx, y, segments) {
   let x = cx - tw / 2;
   for (const [txt, fill, glow] of segments) {
     ctx.shadowColor = glow;
-    ctx.shadowBlur = 8;
+    ctx.shadowBlur = game.paused ? 0 : 8;
     ctx.fillStyle = fill;
     ctx.fillText(txt, x, y);
     ctx.shadowBlur = 0;
@@ -203,17 +203,14 @@ function drawPauseOverlay() {
   ctx.textAlign = 'center';
   ctx.font = '900 42px Orbitron,Courier New';
   ctx.fillStyle = '#f4fff8';
-  ctx.shadowColor = '#44ff88';
-  ctx.shadowBlur = 26;
+  ctx.shadowColor = 'rgba(68,255,136,0.45)';
+  ctx.shadowBlur = 8;
   ctx.fillText('PAUSED', cx, 118);
   ctx.shadowBlur = 0;
 
   ctx.font = 'bold 12px Orbitron,Courier New';
   ctx.fillStyle = '#7fff7f';
-  ctx.shadowColor = 'rgba(0,255,80,0.55)';
-  ctx.shadowBlur = 10;
   ctx.fillText('再開:「続ける」または ESC', cx, 150);
-  ctx.shadowBlur = 0;
   ctx.restore();
 
   const hpRatio = game.playerStats?.maxHp > 0 ? game.playerStats.hp / game.playerStats.maxHp : 1;
@@ -227,7 +224,7 @@ function drawPauseOverlay() {
   ctx.stroke();
   ctx.fillStyle = hpColor;
   ctx.shadowColor = hpColor;
-  ctx.shadowBlur = 12;
+  ctx.shadowBlur = 4;
   ctx.beginPath();
   ctx.roundRect(cx - 160, 168, 320 * Math.max(0, Math.min(1, hpRatio)), 14, 4);
   ctx.fill();
@@ -235,10 +232,7 @@ function drawPauseOverlay() {
   ctx.textAlign = 'center';
   ctx.font = 'bold 13px Orbitron,Courier New';
   ctx.fillStyle = '#00ff88';
-  ctx.shadowColor = 'rgba(0,255,136,0.65)';
-  ctx.shadowBlur = 8;
   ctx.fillText(`HP  ${game.playerStats?.hp ?? 0} / ${game.playerStats?.maxHp ?? 0}`, cx, 198);
-  ctx.shadowBlur = 0;
 
   const stats = [
     { l: 'ATK', v: `×${(game.playerStats?.atk ?? 1).toFixed(2)}`, c: '#ffaa44', g: 'rgba(255,160,60,0.75)' },
@@ -261,17 +255,11 @@ function drawPauseOverlay() {
     ctx.fillStyle = 'rgba(127,255,127,0.85)';
     ctx.font = 'bold 10px Orbitron,Courier New';
     ctx.textAlign = 'left';
-    ctx.shadowColor = 'rgba(0,255,80,0.4)';
-    ctx.shadowBlur = 4;
     ctx.fillText(s.l, bx + 10, by + 14);
-    ctx.shadowBlur = 0;
     ctx.fillStyle = s.c;
-    ctx.shadowColor = s.g;
-    ctx.shadowBlur = 10;
     ctx.font = '900 15px Orbitron,Courier New';
     ctx.textAlign = 'right';
     ctx.fillText(s.v, bx + 140, by + 28);
-    ctx.shadowBlur = 0;
   });
 
   game._pauseBtnHits = [];
@@ -286,7 +274,7 @@ function drawPauseOverlay() {
     const hovered = game.hoveredBtn?.pauseHitType === type;
     ctx.save();
     ctx.shadowColor = col;
-    ctx.shadowBlur = hovered ? 20 : 12;
+    ctx.shadowBlur = hovered ? 6 : 2;
     ctx.fillStyle = hovered ? fillBase.hover : fillBase.base;
     ctx.strokeStyle = hovered ? col : fillBase.stroke;
     ctx.lineWidth = hovered ? 2 : 1;
@@ -296,12 +284,9 @@ function drawPauseOverlay() {
     ctx.stroke();
     ctx.shadowBlur = 0;
     ctx.fillStyle = hovered ? '#ffffff' : col;
-    ctx.shadowColor = col;
-    ctx.shadowBlur = hovered ? 8 : 4;
     ctx.font = btnFont;
     ctx.textAlign = 'center';
     ctx.fillText(label, x + w / 2, y + h / 2 + 4);
-    ctx.shadowBlur = 0;
     ctx.textAlign = 'left';
     ctx.restore();
     game._pauseBtnHits.push({ type, x, y, w, h });
@@ -323,6 +308,27 @@ function drawPauseOverlay() {
     [String(game.combo | 0), '#88ffcc', 'rgba(120,255,200,0.6)'],
   ]);
   ctx.textAlign = 'left';
+}
+
+/** ゲームオーバー用クリスタル（ガチャのジェムアイコンと同型・SF UI 向け） */
+function drawGameOverGemCrystal(cx0, cy0, size, color) {
+  const gctx = drawDeps.ctx;
+  const s = size;
+  gctx.save();
+  gctx.translate(cx0, cy0);
+  gctx.fillStyle = color;
+  gctx.beginPath();
+  gctx.moveTo(0, -s * 0.58);
+  gctx.lineTo(s * 0.48, 0);
+  gctx.lineTo(0, s * 0.58);
+  gctx.lineTo(-s * 0.48, 0);
+  gctx.closePath();
+  gctx.fill();
+  gctx.fillStyle = 'rgba(255,255,255,0.78)';
+  gctx.beginPath();
+  gctx.arc(-s * 0.14, -s * 0.16, Math.max(1, s * 0.11), 0, Math.PI * 2);
+  gctx.fill();
+  gctx.restore();
 }
 
 function drawGameOverOverlay() {
@@ -347,35 +353,69 @@ function drawGameOverOverlay() {
     ctx.fillRect(0, 0, W, H);
   }
 
-  // Dim + vignette for readability
+  // 敗北オーバーレイ：中央は暗く、外周・地平線は火星の赤みとノイズが残る（全面ベタ黒は避ける）
   ctx.save();
-  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  const vy = H * 0.36;
+  const rIn = Math.min(W, H) * 0.26;
+  const rOut = Math.max(W, H) * 0.95;
+  const rg = ctx.createRadialGradient(cx, vy, rIn, cx, vy, rOut);
+  rg.addColorStop(0, 'rgba(6, 3, 8, 0.58)');
+  rg.addColorStop(0.32, 'rgba(14, 6, 8, 0.36)');
+  rg.addColorStop(0.52, 'rgba(28, 10, 8, 0.20)');
+  rg.addColorStop(0.72, 'rgba(55, 18, 12, 0.11)');
+  rg.addColorStop(1, 'rgba(95, 32, 22, 0.06)');
+  ctx.fillStyle = rg;
   ctx.fillRect(0, 0, W, H);
-  const vg = ctx.createRadialGradient(cx, H * 0.42, H * 0.18, cx, H * 0.42, H * 0.85);
-  vg.addColorStop(0, 'rgba(0,0,0,0)');
-  vg.addColorStop(1, 'rgba(0,0,0,0.62)');
-  ctx.fillStyle = vg;
+
+  const hg = ctx.createLinearGradient(0, H * 0.48, 0, H);
+  hg.addColorStop(0, 'rgba(0,0,0,0)');
+  hg.addColorStop(0.5, 'rgba(140, 42, 28, 0.12)');
+  hg.addColorStop(1, 'rgba(200, 72, 38, 0.20)');
+  ctx.fillStyle = hg;
   ctx.fillRect(0, 0, W, H);
+
+  for (let i = 0; i < 220; i++) {
+    const rx = ((i * 9973) % Math.max(1, W - 1));
+    const ry = ((i * 7919) % Math.max(1, H - 1));
+    const al = 0.01 + (i % 8) * 0.0035;
+    ctx.fillStyle = i % 3 === 0 ? `rgba(255, 205, 175, ${al})` : `rgba(35, 14, 10, ${al * 0.95})`;
+    ctx.fillRect(rx, ry, 1, 1);
+  }
   ctx.restore();
 
   const touchBoost = W < 560 ? 1 : 0;
   const pw = Math.min(520, Math.max(340, W * 0.66));
-  const phExtraBoss = copy.showBossRetry ? 62 : 0;
-  const ph = Math.min(
-    480,
-    Math.max((copy.wasRecord ? 292 : 268) + phExtraBoss + touchBoost * 16, H * (copy.showBossRetry ? 0.50 : 0.46) + touchBoost * 12),
+  const phExtraBoss = copy.showBossRetry ? 52 : 0;
+  /** 詰めたレイアウトでもボタンまで収まるよう実高に合わせた下限（過小だとクリップする） */
+  const phExtraStats = 106 + (copy.bestGapLine ? 18 : 0);
+  const margin = 12;
+  const pyPrefer = Math.floor(H * (copy.showBossRetry ? 0.12 : 0.15));
+  let ph = Math.min(
+    525,
+    Math.max((copy.wasRecord ? 318 : 294) + phExtraBoss + phExtraStats + touchBoost * 12, H * (copy.showBossRetry ? 0.52 : 0.48) + touchBoost * 10),
   );
+  ph = Math.min(ph, Math.max(260, H - margin * 2));
+  let py = pyPrefer;
+  if (py + ph > H - margin) py = Math.max(margin, H - ph - margin);
   const px = Math.floor(cx - pw / 2);
-  const py = Math.floor(H * (copy.showBossRetry ? 0.13 : 0.16));
   const r = 16;
-  const accent = '#44ff88';
   const hoverId = game.hoveredBtn?.id || '';
+  /** 結果画面は静止表示（frameCount によるパルスなし） */
+  const goStill = {
+    outerStrokeA: 0.46,
+    dashSepA: 0.26,
+    cornerA: 0.33,
+    titleGlowA: 0.35,
+    titleGlowBlur: 12,
+    scoreGlowA: 0.52,
+    scoreGlowBlur: 14,
+  };
 
   ctx.save();
-  ctx.fillStyle = 'rgba(2, 4, 14, 0.92)';
-  ctx.strokeStyle = 'rgba(120, 255, 180, 0.38)';
-  ctx.shadowColor = 'rgba(80, 255, 140, 0.22)';
-  ctx.shadowBlur = 26;
+  ctx.fillStyle = 'rgba(10, 4, 8, 0.93)';
+  ctx.strokeStyle = `rgba(255, 92, 58, ${goStill.outerStrokeA})`;
+  ctx.shadowColor = 'rgba(120, 35, 22, 0.45)';
+  ctx.shadowBlur = 22;
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.roundRect(px, py, pw, ph, r);
@@ -383,87 +423,308 @@ function drawGameOverOverlay() {
   ctx.stroke();
   ctx.shadowBlur = 0;
 
-  const hg = ctx.createLinearGradient(px, py, px, py + 56);
-  hg.addColorStop(0, 'rgba(60, 255, 140, 0.16)');
-  hg.addColorStop(1, 'rgba(60, 255, 140, 0)');
-  ctx.fillStyle = hg;
+  ctx.strokeStyle = 'rgba(255, 160, 90, 0.2)';
+  ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.roundRect(px + 2, py + 2, pw - 4, 58, [r - 2, r - 2, 0, 0]);
-  ctx.fill();
+  ctx.roundRect(px + 6, py + 6, pw - 12, ph - 12, Math.max(4, r - 6));
+  ctx.stroke();
 
-  ctx.fillStyle = accent;
-  ctx.shadowColor = accent;
-  ctx.shadowBlur = 14;
-  ctx.font = '900 34px Orbitron,Courier New';
+  const topBand = ctx.createLinearGradient(px, py, px + pw, py);
+  topBand.addColorStop(0, 'rgba(180, 35, 25, 0)');
+  topBand.addColorStop(0.12, 'rgba(255, 65, 35, 0.28)');
+  topBand.addColorStop(0.5, 'rgba(255, 130, 55, 0.18)');
+  topBand.addColorStop(0.88, 'rgba(220, 50, 30, 0.22)');
+  topBand.addColorStop(1, 'rgba(160, 30, 20, 0)');
+  ctx.fillStyle = topBand;
+  ctx.fillRect(px + 3, py + 3, pw - 6, 5);
+
+  ctx.strokeStyle = `rgba(255, 95, 55, ${goStill.dashSepA})`;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([10, 7]);
+  ctx.beginPath();
+  ctx.moveTo(px + 18, py + 50);
+  ctx.lineTo(px + pw - 18, py + 50);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(px + 2, py + 2, pw - 4, ph - 4, r - 2);
+  ctx.clip();
+  for (let i = 0; i < 320; i++) {
+    const rx = px + 4 + ((i * 7919) % Math.max(8, pw - 8));
+    const ry = py + 4 + ((i * 4517) % Math.max(8, ph - 8));
+    const al = 0.01 + (i % 9) * 0.005;
+    ctx.fillStyle = i % 4 === 0 ? `rgba(255, 210, 190, ${al})` : `rgba(30, 14, 18, ${al * 1.8})`;
+    ctx.fillRect(rx, ry, 1, 1);
+  }
+  ctx.restore();
+
+  const corner = (x0, y0, dx, dy) => {
+    ctx.strokeStyle = `rgba(255, 140, 80, ${goStill.cornerA})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x0, y0 + dy);
+    ctx.lineTo(x0, y0);
+    ctx.lineTo(x0 + dx, y0);
+    ctx.stroke();
+  };
+  corner(px + 10, py + 10, 22, 22);
+  corner(px + pw - 10, py + 10, -22, 22);
+
   ctx.textAlign = 'center';
-  ctx.fillText('ゲームオーバー', cx, py + 44);
+  const titleY = py + 40;
+  ctx.font = '900 32px Orbitron,Courier New,sans-serif';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = 2.2;
+  ctx.strokeStyle = 'rgba(12, 4, 6, 0.94)';
+  ctx.strokeText('ゲームオーバー', cx, titleY);
+  const titleGrad = ctx.createLinearGradient(cx - 140, titleY - 22, cx + 140, titleY + 12);
+  titleGrad.addColorStop(0, '#7a241c');
+  titleGrad.addColorStop(0.35, '#c03828');
+  titleGrad.addColorStop(0.55, '#e85538');
+  titleGrad.addColorStop(0.72, '#d04028');
+  titleGrad.addColorStop(1, '#6e1814');
+  ctx.fillStyle = titleGrad;
+  ctx.shadowColor = `rgba(255, 55, 30, ${goStill.titleGlowA})`;
+  ctx.shadowBlur = goStill.titleGlowBlur;
+  ctx.fillText('ゲームオーバー', cx, titleY);
   ctx.shadowBlur = 0;
 
-  let statY = py + 88;
-  ctx.fillStyle = 'rgba(220, 245, 255, 0.86)';
-  ctx.font = '900 16px Orbitron,Courier New';
-  ctx.fillText(copy.scoreText, cx, statY);
-  statY += 26;
+  ctx.strokeStyle = 'rgba(55, 160, 175, 0.28)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx - 108, titleY + 11);
+  ctx.lineTo(cx + 108, titleY + 11);
+  ctx.stroke();
+
+  const scoreTop = py + 68;
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = 'rgba(210, 192, 178, 0.72)';
+  ctx.font = '900 12px Orbitron,Courier New,sans-serif';
+  ctx.letterSpacing = '0.28em';
+  ctx.fillText(copy.scoreLabel, cx, scoreTop);
+  ctx.letterSpacing = '0';
+
+  const rawScore = copy.scoreValue || String(game.score | 0);
+  let scoreFontPx = Math.floor(Math.min(62, Math.max(40, pw * 0.152)));
+  if (rawScore.length >= 7) scoreFontPx = Math.floor(scoreFontPx * 0.88);
+  if (rawScore.length >= 9) scoreFontPx = Math.floor(scoreFontPx * 0.82);
+
+  const numY = scoreTop + 20;
+  ctx.font = `900 ${scoreFontPx}px Orbitron,Courier New,sans-serif`;
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = Math.max(2.5, scoreFontPx * 0.055);
+  ctx.strokeStyle = 'rgba(8, 4, 2, 0.92)';
+  ctx.strokeText(rawScore, cx, numY);
+
+  ctx.fillStyle = '#ffd25a';
+  ctx.shadowColor = `rgba(255, 190, 65, ${goStill.scoreGlowA})`;
+  ctx.shadowBlur = goStill.scoreGlowBlur;
+  ctx.fillText(rawScore, cx, numY);
+  ctx.shadowBlur = 0;
+
+  let statY = numY + scoreFontPx + 10;
+  ctx.textBaseline = 'alphabetic';
   if (copy.wasRecord) {
     ctx.fillStyle = 'rgba(255, 220, 80, 0.95)';
-    ctx.font = '900 13px Orbitron,Courier New';
+    ctx.font = '900 13px Orbitron,Courier New,sans-serif';
     ctx.fillText('★ NEW RECORD! ★', cx, statY);
-    statY += 22;
+    statY += 18;
   }
-  ctx.fillStyle = 'rgba(190, 220, 255, 0.55)';
-  ctx.font = '900 13px Orbitron,Courier New';
-  ctx.fillText(copy.stageLine, cx, statY);
+
+  statY += 4;
+  ctx.strokeStyle = 'rgba(255, 140, 100, 0.22)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(px + 20, statY);
+  ctx.lineTo(px + pw - 20, statY);
+  ctx.stroke();
+  statY += 10;
+
+  const lx = px + 22;
+  const rx = px + pw - 22;
+  const rowGap = touchBoost ? 11 : 13;
+  const drawGoStatRow = (y, label, value, valueFont, valueColor) => {
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    ctx.font = '900 12px Orbitron,Courier New,sans-serif';
+    ctx.fillStyle = 'rgba(176, 166, 156, 0.88)';
+    ctx.fillText(label, lx, y);
+    ctx.textAlign = 'right';
+    ctx.font = valueFont;
+    ctx.fillStyle = valueColor;
+    ctx.fillText(value, rx, y);
+  };
+
+  drawGoStatRow(statY, copy.stageReachedLabel, copy.stageReachedValue, '900 17px Orbitron,Courier New,sans-serif', '#5ae8ff');
+  statY += rowGap;
+  drawGoStatRow(statY, '撃破数', copy.killsLine, '900 13px Orbitron,Courier New,sans-serif', 'rgba(228, 248, 255, 0.94)');
+  statY += rowGap;
+  drawGoStatRow(statY, '生存時間', copy.survivalLine, '900 13px Orbitron,Courier New,sans-serif', 'rgba(190, 230, 255, 0.88)');
+  statY += rowGap;
+  drawGoStatRow(statY, '獲得コイン', copy.coinsEarnedLine, '900 13px Orbitron,Courier New,sans-serif', '#ffd873');
+  statY += rowGap;
+  drawGoStatRow(statY, 'BEST', copy.bestLine, '900 14px Orbitron,Courier New,sans-serif', '#ffcc55');
+  statY += rowGap * 0.78;
+  if (copy.bestGapLine) {
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '900 13px Orbitron,Courier New,sans-serif';
+    ctx.fillStyle = 'rgba(255, 210, 165, 0.92)';
+    ctx.fillText(copy.bestGapLine, cx, statY);
+    statY += rowGap * 0.62;
+  }
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
 
   const bw = Math.min(touchBoost ? 400 : 380, pw - 48);
-  const bh = 48 + touchBoost * 10;
+  const bh = 44 + touchBoost * 8;
+  const bhMain = bh + 4;
   const bx = Math.floor(cx - bw / 2);
-  const gap = 12 + touchBoost * 4;
-  const y1 = statY + 36;
+  const gap = 8 + touchBoost * 3;
+  const y1 = statY + 16;
 
-  const btn = (y, label, sub, type, col, disabled = false) => {
-    const hovered = hoverId === `go_${type}` && !disabled;
-    const baseFill = hovered ? 'rgba(30, 60, 46, 0.92)' : 'rgba(10, 18, 26, 0.92)';
-    const stroke = hovered ? col : 'rgba(120, 160, 200, 0.18)';
+  const drawGoBtnMain = (y, label, type) => {
+    const hovered = hoverId === `go_${type}`;
+    const accent = '#48eeff';
     ctx.save();
-    ctx.fillStyle = baseFill;
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = hovered ? 2.2 : 1.4;
-    ctx.shadowColor = col;
-    ctx.shadowBlur = hovered ? 18 : 10;
-    ctx.globalAlpha = disabled ? 0.4 : 1;
+    ctx.fillStyle = hovered ? 'rgba(12, 100, 128, 0.96)' : 'rgba(6, 62, 88, 0.94)';
+    ctx.strokeStyle = hovered ? accent : 'rgba(120, 230, 255, 0.52)';
+    ctx.lineWidth = hovered ? 2.5 : 2;
+    ctx.shadowColor = accent;
+    ctx.shadowBlur = hovered ? 28 : 20;
+    ctx.beginPath();
+    ctx.roundRect(bx, y, bw, bhMain, 12);
+    ctx.fill();
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#eaffff';
+    ctx.font = '900 16px Orbitron,Courier New,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, cx, y + bhMain / 2 + 1);
+    ctx.textBaseline = 'alphabetic';
+    ctx.restore();
+    game._gameoverHits.push({ type, x: bx, y, w: bw, h: bhMain, disabled: false });
+  };
+
+  const drawGoBtnSub = (y, label, type, accent, disabled = false) => {
+    const hovered = hoverId === `go_${type}` && !disabled;
+    ctx.save();
+    ctx.globalAlpha = disabled ? 0.42 : 1;
+    ctx.fillStyle = hovered ? 'rgba(44, 34, 72, 0.94)' : 'rgba(24, 20, 48, 0.92)';
+    ctx.strokeStyle = hovered ? accent : 'rgba(140, 130, 200, 0.28)';
+    ctx.lineWidth = hovered ? 2 : 1.35;
+    ctx.shadowColor = accent;
+    ctx.shadowBlur = hovered ? 16 : 8;
     ctx.beginPath();
     ctx.roundRect(bx, y, bw, bh, 12);
     ctx.fill();
     ctx.stroke();
     ctx.shadowBlur = 0;
     ctx.globalAlpha = 1;
-    ctx.fillStyle = disabled ? 'rgba(220, 240, 255, 0.35)' : '#eaf6ff';
-    ctx.font = '900 15px Orbitron,Courier New';
+    ctx.fillStyle = disabled ? 'rgba(200, 210, 230, 0.35)' : 'rgba(220, 225, 255, 0.92)';
+    ctx.font = '900 14px Orbitron,Courier New,sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    const midY = y + bh / 2;
-    if (sub) {
-      ctx.fillText(label, cx, midY - 8);
-      ctx.fillStyle = disabled ? 'rgba(180, 210, 255, 0.28)' : 'rgba(180, 210, 255, 0.55)';
-      ctx.font = '900 11px Orbitron,Courier New';
-      ctx.fillText(sub, cx, midY + 10);
-    } else {
-      ctx.fillText(label, cx, midY + 2);
-    }
+    ctx.fillText(label, cx, y + bh / 2 + 1);
     ctx.textBaseline = 'alphabetic';
     ctx.restore();
     game._gameoverHits.push({ type, x: bx, y, w: bw, h: bh, disabled });
   };
 
-  btn(y1, '即リトライ', '', 'retry', '#88ccff');
-  btn(y1 + (bh + gap), copy.continueMain, '', 'continue', '#ffcc66', !copy.gemOk);
-  if (copy.showBossRetry) {
-    btn(y1 + (bh + gap) * 2, copy.bossRetryMain, '', 'boss_retry', '#ff88cc');
-  }
+  const drawGoBtnContinue = (y, disabled = false) => {
+    const hovered = hoverId === 'go_continue' && !disabled;
+    const accent = '#a090f0';
+    ctx.save();
+    ctx.globalAlpha = disabled ? 0.42 : 1;
+    ctx.fillStyle = hovered ? 'rgba(44, 34, 72, 0.94)' : 'rgba(24, 20, 48, 0.92)';
+    ctx.strokeStyle = hovered ? accent : 'rgba(140, 130, 200, 0.28)';
+    ctx.lineWidth = hovered ? 2 : 1.35;
+    ctx.shadowColor = accent;
+    ctx.shadowBlur = hovered ? 16 : 8;
+    ctx.beginPath();
+    ctx.roundRect(bx, y, bw, bh, 12);
+    ctx.fill();
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
 
-  ctx.fillStyle = 'rgba(150, 185, 220, 0.40)';
-  ctx.font = '900 11px Orbitron,Courier New';
-  ctx.fillText(copy.footer, cx, py + ph - 16);
+    const midY = y + bh / 2 + 1;
+    const label = copy.continueLabel || 'コンティニュー';
+    const cost = copy.continueGemCost ?? 0;
+    const gemCol = disabled ? '#8a96a8' : '#9ae8ff';
+    const textMain = disabled ? 'rgba(200, 210, 230, 0.35)' : 'rgba(220, 225, 255, 0.92)';
+    const textCost = disabled ? 'rgba(200, 210, 230, 0.35)' : 'rgba(200, 215, 255, 0.88)';
+
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    ctx.font = '900 13px Orbitron,Courier New,sans-serif';
+    const twLabel = ctx.measureText(label).width;
+    const iconS = Math.min(13, Math.max(9, Math.floor(bh * 0.26)));
+    const gap1 = 10;
+    const gap2 = 5;
+    ctx.font = '900 12px Orbitron,Courier New,sans-serif';
+    const costStr = `×${cost}`;
+    const twCost = ctx.measureText(costStr).width;
+    const totalW = twLabel + gap1 + iconS + gap2 + twCost;
+    let xL = cx - totalW / 2;
+
+    ctx.font = '900 13px Orbitron,Courier New,sans-serif';
+    ctx.fillStyle = textMain;
+    ctx.fillText(label, xL, midY);
+    xL += twLabel + gap1;
+    drawGameOverGemCrystal(xL + iconS * 0.48, midY, iconS, gemCol);
+    xL += iconS + gap2;
+    ctx.font = '900 12px Orbitron,Courier New,sans-serif';
+    ctx.fillStyle = textCost;
+    ctx.fillText(costStr, xL, midY);
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.restore();
+    game._gameoverHits.push({ type: 'continue', x: bx, y, w: bw, h: bh, disabled });
+  };
+
+  const drawGoTextLink = (yMid, label, type) => {
+    ctx.save();
+    ctx.font = '900 13px Orbitron,Courier New,sans-serif';
+    const tw = ctx.measureText(label).width;
+    const padX = 18;
+    const padY = 11;
+    const hitW = tw + padX * 2;
+    const hitH = padY * 2;
+    const hitX = Math.floor(cx - hitW / 2);
+    const hitY = Math.floor(yMid - hitH / 2);
+    const hovered = hoverId === `go_${type}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = hovered ? 'rgba(240, 248, 255, 0.98)' : 'rgba(190, 215, 248, 0.94)';
+    ctx.fillText(label, cx, yMid);
+    ctx.strokeStyle = hovered ? 'rgba(130, 210, 255, 0.82)' : 'rgba(120, 185, 235, 0.62)';
+    ctx.lineWidth = hovered ? 1.5 : 1;
+    ctx.beginPath();
+    ctx.moveTo(cx - tw / 2, yMid + 9);
+    ctx.lineTo(cx + tw / 2, yMid + 9);
+    ctx.stroke();
+    ctx.textBaseline = 'alphabetic';
+    ctx.restore();
+    game._gameoverHits.push({ type, x: hitX, y: hitY, w: hitW, h: hitH, disabled: false });
+  };
+
+  let yBtn = y1;
+  drawGoBtnMain(yBtn, copy.retryMain, 'retry');
+  yBtn += bhMain + gap;
+  drawGoBtnContinue(yBtn, !copy.gemOk);
+  yBtn += bh + gap;
+  if (copy.showBossRetry) {
+    drawGoBtnSub(yBtn, copy.bossRetryMain, 'boss_retry', '#c786bc');
+    yBtn += bh + gap;
+  }
+  drawGoTextLink(yBtn + 6, copy.stageSelectLabel, 'stage_select');
+
   ctx.textAlign = 'left';
   ctx.restore();
 }
@@ -473,7 +734,7 @@ function drawCriticalVignette() {
   const ratio = game.playerStats?.maxHp > 0 ? game.playerStats.hp / game.playerStats.maxHp : 1;
   if (ratio >= 0.3) return;
   const danger = (0.3 - ratio) / 0.3;
-  const alpha = 0.15 + danger * 0.35 + Math.sin(game.frameCount * 0.2) * 0.08;
+  const alpha = 0.15 + danger * 0.35 + (game.paused ? 0 : Math.sin(game.frameCount * 0.2) * 0.08);
   const grad = ctx.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, H * 0.85);
   grad.addColorStop(0, 'rgba(255,0,0,0)');
   grad.addColorStop(1, `rgba(255,0,0,${alpha})`);
@@ -482,7 +743,7 @@ function drawCriticalVignette() {
 
 function drawJoystick() {
   const ctx = drawDeps.ctx;
-  if (!game.joystick?.active) return;
+  if (game.paused || !game.joystick?.active) return;
   const cx = game.joystick.baseX ?? game.joystick.cx, cy = game.joystick.baseY ?? game.joystick.cy;
   const dx = game.joystick.dx, dy = game.joystick.dy;
   const JR = 65;
@@ -513,15 +774,21 @@ function drawScreenFlash() {
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, H);
   ctx.restore();
-  game.screenFlash.alpha -= game.screenFlash.decay;
-  if (game.screenFlash.alpha <= 0) game.screenFlash = null;
+  if (!game.paused) {
+    game.screenFlash.alpha -= game.screenFlash.decay;
+    if (game.screenFlash.alpha <= 0) game.screenFlash = null;
+  }
 }
 
 function drawVignette() {
   const ctx = drawDeps.ctx;
-  const grad = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 0.82);
+  const playing = game.state === 'playing';
+  const inner = playing ? H * 0.42 : H * 0.35;
+  const outer = playing ? H * 0.9 : H * 0.82;
+  const edge = playing ? 0.3 : 0.55;
+  const grad = ctx.createRadialGradient(W / 2, H / 2, inner, W / 2, H / 2, outer);
   grad.addColorStop(0, 'rgba(0,0,0,0)');
-  grad.addColorStop(1, 'rgba(0,0,0,0.55)');
+  grad.addColorStop(1, `rgba(0,0,0,${edge})`);
   ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
 }
 
@@ -562,23 +829,49 @@ function drawBattleBackground() {
   const dy = (H - dh) / 2;
   ctx.save();
   ctx.drawImage(img, 0, 0, iw, ih, dx, dy, dw, dh);
-  ctx.fillStyle = 'rgba(6, 2, 10, 0.55)';
+  ctx.fillStyle = 'rgba(5, 2, 12, 0.44)';
   ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = 'rgba(180, 40, 20, 0.08)';
+  ctx.fillStyle = 'rgba(160, 38, 24, 0.045)';
   ctx.fillRect(0, 0, W, H);
+  if (game.state === 'playing') {
+    ctx.fillStyle = 'rgba(2, 4, 14, 0.09)';
+    ctx.fillRect(0, 0, W, H);
+  }
   ctx.restore();
   game._battleBackdropActive = true;
   return true;
+}
+
+/** 戦闘中：自機周辺はややクリア、周縁だけ薄く落として「プレイ帯」を作る */
+function drawCombatPlayerVignette() {
+  if (game.state !== 'playing' || !game.player) return;
+  const p = game.player;
+  const cx = p.x + p.w / 2;
+  const cy = p.y + p.h / 2;
+  const inner = 48 + Math.min(p.w, p.h) * 0.9;
+  const outer = Math.max(W, H) * 0.92;
+  ctx.save();
+  const g = ctx.createRadialGradient(cx, cy, inner, cx, cy, outer);
+  g.addColorStop(0, 'rgba(0,0,0,0)');
+  g.addColorStop(0.42, 'rgba(0,0,0,0)');
+  g.addColorStop(0.78, 'rgba(0,3,12,0.11)');
+  g.addColorStop(1, 'rgba(0,4,14,0.22)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
 }
 
 function drawStarfield() {
   const ctx = drawDeps.ctx;
   const isTitleFull = game.state === 'title' && game.titleBgQuality === 'full';
   const dimStars = !!game._battleBackdropActive;
+  const playing = game.state === 'playing';
   if (dimStars) ctx.globalAlpha = 0.38;
   for (const s of game.stars) {
     const tw = 0.4 + Math.sin(s.twinkle) * 0.6;
-    ctx.globalAlpha = isTitleFull ? Math.min(1, tw * (0.55 + (s.layer || 1) * 0.22)) : tw * (0.4 + (s.layer || 1) * 0.18);
+    let a = isTitleFull ? Math.min(1, tw * (0.55 + (s.layer || 1) * 0.22)) : tw * (0.4 + (s.layer || 1) * 0.18);
+    if (playing) a *= dimStars ? 0.3 : 0.48;
+    ctx.globalAlpha = a;
     const onTitle = game.state === 'title';
     ctx.fillStyle = onTitle
       ? ((s.layer || 1) >= 2 ? '#ffccb0' : '#fff6f0')
@@ -1440,8 +1733,9 @@ function updateDamageNumbers() {
 function drawDamageNumbers() {
   ctx.textAlign = 'center';
   for (const d of game.damageNumbers) {
-    const a = Math.min(1, d.timer / 20);
-    const scale = d.isCrit ? (d.timer > 45 ? 1 + (55 - d.timer) * 0.08 : 1) : 1;
+    const fadeFrames = 14;
+    const a = Math.min(1, d.timer / fadeFrames);
+    const scale = d.isCrit ? (d.timer > 32 ? 1 + (40 - d.timer) * 0.09 : 1) : 1;
     ctx.save();
     ctx.globalAlpha = a;
     ctx.translate(d.x, d.y);
@@ -1466,9 +1760,11 @@ function drawParticles() {
 
 function drawGroundLine(color) {
   const glow = 4 + Math.sin(game.groundPulse) * 2;
-  ctx.shadowColor = color; ctx.shadowBlur = glow * 3; ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+  if (game.state === 'playing') ctx.globalAlpha = 0.62;
+  ctx.shadowColor = color; ctx.shadowBlur = glow * 2.2; ctx.strokeStyle = color; ctx.lineWidth = 1.35;
   ctx.beginPath(); ctx.moveTo(0, H - 30); ctx.lineTo(W, H - 30); ctx.stroke();
   ctx.shadowBlur = 0;
+  ctx.globalAlpha = 1;
 }
 
 function drawHUD(accent) {
@@ -1479,55 +1775,133 @@ function drawHUD(accent) {
   ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(0, BAR_Y); ctx.lineTo(W, BAR_Y); ctx.stroke();
 
-  // ── 左: HPバー ──
+  const TAG_FS = 'bold 10px Orbitron,Courier New,sans-serif';
+  const BAR_TOP = BAR_Y + 13;
+  const BAR_H_INNER = 10;
+  const BAR_R = 4;
+
+  // ── 左: HP（体力・緑ゲージ）──
   const hpRatio = game.playerStats.maxHp > 0 ? game.playerStats.hp / game.playerStats.maxHp : 0;
   const hpCol = hpRatio > 0.5 ? '#00ff88' : hpRatio > 0.25 ? '#ffaa00' : '#ff3344';
-  ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.beginPath(); ctx.roundRect(8, BAR_Y + 8, 180, 10, 3); ctx.fill();
-  ctx.shadowColor = hpCol; ctx.shadowBlur = 6;
-  ctx.fillStyle = hpCol; ctx.beginPath(); ctx.roundRect(8, BAR_Y + 8, Math.max(0, 180 * hpRatio), 10, 3); ctx.fill();
+  ctx.textAlign = 'left';
+  ctx.font = TAG_FS;
+  ctx.fillStyle = 'rgba(210,240,220,0.95)';
+  ctx.fillText('HP · LIFE', 8, BAR_Y + 9);
+  ctx.fillStyle = 'rgba(255,255,255,0.22)';
+  ctx.beginPath(); ctx.roundRect(8, BAR_TOP, 180, BAR_H_INNER, BAR_R); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,255,140,0.4)'; ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.shadowColor = hpCol; ctx.shadowBlur = hpRatio > 0.25 ? 8 : 4;
+  ctx.fillStyle = hpCol;
+  ctx.beginPath(); ctx.roundRect(8, BAR_TOP, Math.max(0, 180 * hpRatio), BAR_H_INNER, BAR_R); ctx.fill();
   ctx.shadowBlur = 0;
-  ctx.fillStyle = '#aaa'; ctx.font = '9px Orbitron,Courier New'; ctx.textAlign = 'left';
-  ctx.fillText(`HP  ${game.playerStats.hp} / ${game.playerStats.maxHp}`, 8, BAR_Y + 32);
+  ctx.fillStyle = 'rgba(220,235,230,0.92)';
+  ctx.font = 'bold 9px Orbitron,Courier New,sans-serif';
+  ctx.fillText(`${game.playerStats.hp} / ${game.playerStats.maxHp}`, 8, BAR_Y + 31);
 
-  // ── 中央: ULTゲージ ──
-  const uRatio = game.ultimateGauge / ULTIMATE_MAX;
+  // ── 中央: ULT / CHARGE（溜まるほど色・発光が強まる／MAX で READY）──
+  const uRatio = Math.min(1, game.ultimateGauge / ULTIMATE_MAX);
   const uReady = game.ultimateGauge >= ULTIMATE_MAX;
-  const uCol = uReady ? '#ffdd00' : '#ff8833';
-  const UX = W / 2 - 90, UW = 180;
-  ctx.fillStyle = 'rgba(255,120,0,0.1)'; ctx.beginPath(); ctx.roundRect(UX, BAR_Y + 8, UW, 10, 3); ctx.fill();
-  ctx.shadowColor = uCol; ctx.shadowBlur = uReady ? 14 : 3;
-  ctx.fillStyle = uCol; ctx.beginPath(); ctx.roundRect(UX, BAR_Y + 8, UW * uRatio, 10, 3); ctx.fill();
+  const uCol = uReady
+    ? '#ffee55'
+    : `rgb(255,${Math.round(105 + uRatio * 115)},${Math.round(48 + uRatio * 90)})`;
+  const UX = W / 2 - 90;
+  const UW = 180;
+  ctx.textAlign = 'center';
+  ctx.font = TAG_FS;
+  ctx.fillStyle = uReady ? 'rgba(255,252,210,0.98)' : 'rgba(255,215,185,0.94)';
+  ctx.fillText(uReady ? 'ULT · READY' : 'ULT · CHARGE', W / 2, BAR_Y + 9);
+  ctx.fillStyle = `rgba(255,${90 + uRatio * 40},${40 + uRatio * 30},${0.42 + uRatio * 0.18})`;
+  ctx.beginPath(); ctx.roundRect(UX, BAR_TOP, UW, BAR_H_INNER, BAR_R); ctx.fill();
+  ctx.strokeStyle = uReady
+    ? `rgba(255,245,160,${0.82 + Math.sin(game.frameCount * 0.2) * 0.12})`
+    : `rgba(255,${185 + uRatio * 50},${110 + uRatio * 40},${0.55 + uRatio * 0.28})`;
+  ctx.lineWidth = uReady ? 2.2 : 1.2 + uRatio * 0.45;
+  ctx.stroke();
+  ctx.shadowColor = uCol;
+  ctx.shadowBlur = uReady ? 18 : 5 + uRatio * 12;
+  ctx.fillStyle = uCol;
+  ctx.beginPath(); ctx.roundRect(UX, BAR_TOP, Math.max(0, UW * uRatio), BAR_H_INNER, BAR_R); ctx.fill();
   ctx.shadowBlur = 0;
-  ctx.fillStyle = uCol; ctx.font = '9px Orbitron,Courier New'; ctx.textAlign = 'center';
+  ctx.font = 'bold 9px Orbitron,Courier New,sans-serif';
   if (uReady) {
-    ctx.globalAlpha = 0.6 + Math.sin(game.frameCount * 0.25) * 0.4;
-    ctx.shadowColor = uCol; ctx.shadowBlur = 10;
-    ctx.fillText('★ E : ULTIMATE READY ★', W / 2, BAR_Y + 32);
-    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    const pulse = 0.62 + Math.sin(game.frameCount * 0.24) * 0.38;
+    ctx.strokeStyle = `rgba(255,236,160,${0.45 + pulse * 0.35})`;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.roundRect(UX - 3, BAR_TOP - 3, UW + 6, BAR_H_INNER + 6, BAR_R + 1);
+    ctx.stroke();
+    ctx.globalAlpha = 0.72 + pulse * 0.28;
+    ctx.fillStyle = '#fffce0';
+    ctx.shadowColor = '#ffd848';
+    ctx.shadowBlur = 14;
+    ctx.fillText('★ READY — PRESS E ★', W / 2, BAR_Y + 31);
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
   } else {
-    ctx.fillStyle = '#666';
-    ctx.fillText(`ULT  ${Math.floor(uRatio * 100)}%`, W / 2, BAR_Y + 32);
+    ctx.fillStyle = '#e8d2b8';
+    ctx.fillText(`CHARGE ${Math.floor(uRatio * 100)}%`, W / 2, BAR_Y + 31);
   }
 
-  // ── 右: 武器 + ダッシュ ──
-  const w = currentWeapon(), wcol = WEAPON_COLOR[w];
+  // ── 右: WEAPON（主表示） / DASH（サブ・コンパクト）──
+  const w = currentWeapon();
+  const wcol = WEAPON_COLOR[w];
   const ammo = w === 'normal' ? '∞' : game.weaponAmmo[w];
-  ctx.shadowColor = wcol; ctx.shadowBlur = 6; ctx.fillStyle = wcol;
-  ctx.font = 'bold 12px Orbitron,Courier New'; ctx.textAlign = 'right';
-  ctx.fillText(`[${WEAPON_LABEL[w]}]  ${ammo}`, W - 8, BAR_Y + 18);
+  const rx = W - 10;
+  ctx.textAlign = 'right';
+  ctx.font = 'bold 9px Orbitron,Courier New,sans-serif';
+  ctx.fillStyle = 'rgba(175,195,222,0.88)';
+  ctx.fillText('WEAPON', rx, BAR_Y + 7);
+  ctx.shadowColor = wcol;
+  ctx.shadowBlur = w === 'normal' ? 13 : 8;
+  ctx.fillStyle = wcol;
+  ctx.font = 'bold 15px Orbitron,Courier New,sans-serif';
+  ctx.fillText(WEAPON_LABEL[w], rx, BAR_Y + 22);
   ctx.shadowBlur = 0;
-  // ダッシュ
-  if (game.dashCooldown > 0) {
-    ctx.fillStyle = 'rgba(100,180,255,0.25)'; ctx.beginPath(); ctx.roundRect(W - 104, BAR_Y + 24, 96, 7, 2); ctx.fill();
-    ctx.fillStyle = '#4af'; ctx.shadowColor = '#4af'; ctx.shadowBlur = 4;
-    ctx.beginPath(); ctx.roundRect(W - 104, BAR_Y + 24, 96 * (1 - game.dashCooldown / DASH_COOLDOWN), 7, 2); ctx.fill();
+  ctx.font = 'bold 8px Orbitron,Courier New,sans-serif';
+  if (game.chargeTimer >= 10) {
+    const pct = Math.min(100, Math.floor((game.chargeTimer / CHARGE_MAX) * 100));
+    const cr = !!game.chargeReady;
+    ctx.fillStyle = cr ? 'rgba(255,248,200,0.98)' : 'rgba(255,170,110,0.95)';
+    ctx.shadowColor = cr ? 'rgba(255,220,80,0.85)' : 'rgba(255,100,40,0.55)';
+    ctx.shadowBlur = cr ? 10 : 5;
+    ctx.fillText(
+      cr ? 'PRIMARY · MAX — release Z / Space' : `PRIMARY · charging ${pct}%`,
+      rx,
+      BAR_Y + 32
+    );
     ctx.shadowBlur = 0;
-    ctx.fillStyle = '#4af'; ctx.font = '9px Orbitron,Courier New'; ctx.textAlign = 'right';
-    ctx.fillText('DASH', W - 8, BAR_Y + 40);
   } else {
-    ctx.fillStyle = '#4af'; ctx.font = '9px Orbitron,Courier New'; ctx.textAlign = 'right';
-    ctx.shadowColor = '#4af'; ctx.shadowBlur = 4;
-    ctx.fillText('DASH  READY', W - 8, BAR_Y + 40);
+    ctx.fillStyle = 'rgba(205,220,240,0.82)';
+    ctx.fillText(w === 'normal' ? 'PRIMARY  ·  ∞ ammo' : `ALT  ·  ${ammo}`, rx, BAR_Y + 32);
+  }
+
+  const dashBX = W - 102;
+  const dashBarY = BAR_Y + 37;
+  ctx.fillStyle = 'rgba(130,175,215,0.78)';
+  ctx.font = 'bold 8px Orbitron,Courier New,sans-serif';
+  ctx.fillText('DASH', rx, dashBarY - 1);
+  if (game.dashCooldown > 0) {
+    ctx.fillStyle = 'rgba(85,145,215,0.45)';
+    ctx.beginPath(); ctx.roundRect(dashBX, dashBarY + 2, 92, 6, 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(140,205,255,0.5)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = '#8bd8ff';
+    ctx.shadowColor = 'rgba(90,200,255,0.45)';
+    ctx.shadowBlur = 4;
+    ctx.beginPath(); ctx.roundRect(dashBX, dashBarY + 2, 92 * (1 - game.dashCooldown / DASH_COOLDOWN), 6, 2); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.font = 'bold 8px Orbitron,Courier New,sans-serif';
+    ctx.fillStyle = '#b8e8ff';
+    ctx.fillText('CD…', rx, dashBarY + 14);
+  } else {
+    ctx.fillStyle = 'rgba(65,175,225,0.38)';
+    ctx.beginPath(); ctx.roundRect(dashBX, dashBarY + 2, 92, 6, 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(150,230,255,0.62)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = '#d8f8ff';
+    ctx.shadowColor = 'rgba(110,220,255,0.55)';
+    ctx.shadowBlur = 5;
+    ctx.font = 'bold 8px Orbitron,Courier New,sans-serif';
+    ctx.fillText('READY', rx, dashBarY + 11);
     ctx.shadowBlur = 0;
   }
 
@@ -1550,13 +1924,17 @@ function drawHUD(accent) {
     ctx.shadowBlur = 0; ctx.textAlign = 'left';
   }
 
-  // コンボ
+  // コンボ（スコア加算であることを小ラベルで補助）
   if (game.comboDisplay) {
     ctx.globalAlpha = Math.min(1, game.comboDisplay.timer / 20);
     ctx.shadowColor = '#ff0'; ctx.shadowBlur = 10;
     ctx.fillStyle = '#ff0'; ctx.font = 'bold 16px Orbitron,Courier New'; ctx.textAlign = 'center';
     ctx.fillText(game.comboDisplay.text, game.comboDisplay.x, game.comboDisplay.y);
-    ctx.textAlign = 'left'; ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+    ctx.font = 'bold 8px Orbitron,Courier New,sans-serif';
+    ctx.fillStyle = 'rgba(255,248,200,0.55)';
+    ctx.fillText('SCORE', game.comboDisplay.x, game.comboDisplay.y + 13);
+    ctx.textAlign = 'left'; ctx.globalAlpha = 1;
   }
 
   // ボスまでカウンター
@@ -1620,8 +1998,190 @@ function drawLevelUpDisplay() {
   ctx.shadowBlur = 0; ctx.textAlign = 'left'; ctx.globalAlpha = 1;
 }
 
+/** 隕石イベント：中央WARN・秒数・左右赤帯・落下予測レーン（画面下の薄いバナーはやめる） */
+function drawMeteorEventPresentation() {
+  const ev = game.currentEvent;
+  const t = game.eventTimer;
+  if (!ev || t <= 0) return;
+
+  const pulse = Math.sin(game.frameCount * 0.28) * 0.5 + 0.5;
+  const rainStartsAt = 210;
+  const intro = t > 275;
+
+  ctx.save();
+
+  if (intro) {
+    const flash = (Math.floor(game.frameCount / 3) % 2) === 0;
+    ctx.fillStyle = flash ? 'rgba(255,45,35,0.24)' : 'rgba(120,10,5,0.12)';
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  const edgeW = 16;
+  const edgeA = 0.45 + pulse * 0.38;
+  const gL = ctx.createLinearGradient(0, 0, edgeW + 24, 0);
+  gL.addColorStop(0, `rgba(255,50,40,${edgeA})`);
+  gL.addColorStop(0.55, `rgba(200,20,15,${edgeA * 0.45})`);
+  gL.addColorStop(1, 'rgba(180,0,0,0)');
+  ctx.fillStyle = gL;
+  ctx.fillRect(0, 0, edgeW + 24, H);
+  const gR = ctx.createLinearGradient(W - edgeW - 24, 0, W, 0);
+  gR.addColorStop(0, 'rgba(180,0,0,0)');
+  gR.addColorStop(0.45, `rgba(200,20,15,${edgeA * 0.45})`);
+  gR.addColorStop(1, `rgba(255,50,40,${edgeA})`);
+  ctx.fillStyle = gR;
+  ctx.fillRect(W - edgeW - 24, 0, edgeW + 24, H);
+
+  ctx.strokeStyle = `rgba(255,220,200,${0.55 + pulse * 0.35})`;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(edgeW * 0.5, 0);
+  ctx.lineTo(edgeW * 0.5, H);
+  ctx.moveTo(W - edgeW * 0.5, 0);
+  ctx.lineTo(W - edgeW * 0.5, H);
+  ctx.stroke();
+
+  const lanes = game.meteorEventLanes;
+  if (lanes?.length) {
+    const lanePulse = t <= rainStartsAt ? 0.55 + pulse * 0.35 : 0.28 + pulse * 0.2;
+    const halfW = 14 + pulse * 6;
+    for (const lx of lanes) {
+      const gCol = ctx.createLinearGradient(lx - halfW, 0, lx + halfW, 0);
+      gCol.addColorStop(0, `rgba(80,20,10,0)`);
+      gCol.addColorStop(0.35, `rgba(255,90,40,${lanePulse * 0.22})`);
+      gCol.addColorStop(0.5, `rgba(255,200,140,${lanePulse * 0.38})`);
+      gCol.addColorStop(0.65, `rgba(255,90,40,${lanePulse * 0.22})`);
+      gCol.addColorStop(1, `rgba(80,20,10,0)`);
+      ctx.fillStyle = gCol;
+      ctx.fillRect(lx - halfW, 0, halfW * 2, H - 52);
+
+      ctx.strokeStyle = `rgba(255,240,200,${0.35 + lanePulse * 0.35})`;
+      ctx.lineWidth = 2;
+      ctx.shadowColor = 'rgba(255,120,40,0.65)';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.moveTo(lx, 2);
+      ctx.lineTo(lx, H - 54);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      for (let q = 0; q < 5; q++) {
+        const yy = ((game.frameCount * (2.8 + q * 0.4) + lx * 0.7 + q * 97) % (H - 60)) + 10;
+        ctx.fillStyle = `rgba(255,200,120,${0.08 + lanePulse * 0.1})`;
+        ctx.beginPath();
+        ctx.arc(lx + Math.sin(yy * 0.04) * 4, yy, 1.5 + (q % 2), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  const cx = W / 2;
+  const cy = H * 0.44;
+  ctx.fillStyle = 'rgba(4,2,8,0.72)';
+  ctx.beginPath();
+  ctx.roundRect(cx - 220, cy - 72, 440, 148, 14);
+  ctx.fill();
+  ctx.strokeStyle = `rgba(255,70,50,${0.65 + pulse * 0.25})`;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 22px Orbitron,Courier New,sans-serif';
+  ctx.fillStyle = '#1a0504';
+  ctx.strokeStyle = '#ffaca0';
+  ctx.lineWidth = 4;
+  ctx.strokeText('WARNING', cx, cy - 26);
+  ctx.fillStyle = '#fff5f0';
+  ctx.fillText('WARNING', cx, cy - 26);
+
+  ctx.font = 'bold 26px Orbitron,"Hiragino Sans","Yu Gothic",sans-serif';
+  ctx.strokeStyle = 'rgba(80,10,0,0.85)';
+  ctx.lineWidth = 5;
+  ctx.strokeText(ev.label, cx, cy + 10);
+  ctx.fillStyle = '#ff8844';
+  ctx.shadowColor = '#ff2200';
+  ctx.shadowBlur = 18 + pulse * 10;
+  ctx.fillText(ev.label, cx, cy + 10);
+  ctx.shadowBlur = 0;
+
+  ctx.font = 'bold 15px Orbitron,"Hiragino Sans","Yu Gothic",sans-serif';
+  let sub = '';
+  if (t > rainStartsAt) {
+    const sec = Math.max(1, Math.ceil((t - rainStartsAt) / 60));
+    sub = `落下開始まで 約 ${sec} 秒`;
+  } else {
+    sub = '▼ 隕石落下中 — 軌道から離れろ ▼';
+  }
+  ctx.fillStyle = '#ffccaa';
+  ctx.strokeStyle = '#301818';
+  ctx.lineWidth = 3;
+  ctx.strokeText(sub, cx, cy + 46);
+  ctx.fillText(sub, cx, cy + 46);
+
+  ctx.textAlign = 'left';
+  ctx.restore();
+}
+
+/** ステージ環境の隕石雨（stage5+）：HUD より手前で警告を出す */
+function drawMeteorRainEnvOverlay() {
+  if (game.meteorRainWarning <= 0) return;
+  const wv = game.meteorRainWarning;
+  const pulse = Math.sin(game.frameCount * 0.3) * 0.5 + 0.5;
+  const sec = Math.max(1, Math.ceil(wv / 60));
+  ctx.save();
+  ctx.fillStyle = `rgba(255,40,25,${0.14 + pulse * 0.12})`;
+  ctx.fillRect(0, 0, W, H);
+  const ew = 12;
+  const ea = 0.42 + pulse * 0.38;
+  const gl = ctx.createLinearGradient(0, 0, ew + 18, 0);
+  gl.addColorStop(0, `rgba(255,55,45,${ea})`);
+  gl.addColorStop(1, 'rgba(160,0,0,0)');
+  ctx.fillStyle = gl;
+  ctx.fillRect(0, 0, ew + 18, H);
+  const gr = ctx.createLinearGradient(W - ew - 18, 0, W, 0);
+  gr.addColorStop(0, 'rgba(160,0,0,0)');
+  gr.addColorStop(1, `rgba(255,55,45,${ea})`);
+  ctx.fillStyle = gr;
+  ctx.fillRect(W - ew - 18, 0, ew + 18, H);
+
+  ctx.strokeStyle = `rgba(255,230,210,${0.45 + pulse * 0.35})`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(ew * 0.45, 0);
+  ctx.lineTo(ew * 0.45, H);
+  ctx.moveTo(W - ew * 0.45, 0);
+  ctx.lineTo(W - ew * 0.45, H);
+  ctx.stroke();
+
+  ctx.fillStyle = 'rgba(8,4,6,0.82)';
+  ctx.beginPath();
+  ctx.roundRect(W / 2 - 200, H * 0.38 - 58, 400, 120, 12);
+  ctx.fill();
+  ctx.strokeStyle = `rgba(255,90,60,${0.55 + pulse * 0.28})`;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 20px Orbitron,Courier New,sans-serif';
+  ctx.fillStyle = '#fff0ea';
+  ctx.shadowColor = '#ff3300';
+  ctx.shadowBlur = 16;
+  ctx.fillText('WARNING', W / 2, H * 0.38 - 24);
+  ctx.font = 'bold 18px Orbitron,"Hiragino Sans","Yu Gothic",sans-serif';
+  ctx.fillText('環境：隕石雨接近', W / 2, H * 0.38 + 6);
+  ctx.font = 'bold 14px Orbitron,"Hiragino Sans","Yu Gothic",sans-serif';
+  ctx.fillStyle = '#ffccaa';
+  ctx.fillText(`開始まで 約 ${sec} 秒`, W / 2, H * 0.38 + 36);
+  ctx.shadowBlur = 0;
+  ctx.textAlign = 'left';
+  ctx.restore();
+}
+
 function drawEventBanner() {
   if (!game.currentEvent || game.eventTimer <= 0) return;
+  if (game.currentEvent.id === 'meteor') {
+    drawMeteorEventPresentation();
+    return;
+  }
   const pulse = Math.sin(game.frameCount * 0.15) * 0.3 + 0.7;
   ctx.globalAlpha = pulse * 0.9; ctx.fillStyle = game.currentEvent.color;
   ctx.font = 'bold 18px Orbitron,Courier New'; ctx.textAlign = 'center';
@@ -1634,15 +2194,42 @@ function drawMatPopups() {
   if (!game.matPopups.length) return;
   ctx.textAlign = 'center';
   for (const p of game.matPopups) {
-    const a = p.timer / 55;
-    ctx.globalAlpha = Math.min(1, a * 2);
-    ctx.font = 'bold 14px Orbitron,Courier New';
-    ctx.shadowColor = '#fff'; ctx.shadowBlur = 8;
-    ctx.fillStyle = '#fff';
-    ctx.fillText(p.text, p.x, p.y);
+    const fadeIn = Math.min(1, (52 - p.timer) / 10 + 0.4);
+    const fadeOut = Math.min(1, p.timer / 18);
+    ctx.globalAlpha = Math.min(fadeIn, fadeOut, 1);
+    const kind = p.kind || 'mat';
+    let col = '#f2fbff';
+    let glow = 'rgba(200,245,255,0.75)';
+    let prefix = '';
+    if (kind === 'coin') {
+      col = '#ffe8a8';
+      glow = 'rgba(255,200,90,0.85)';
+      prefix = '🪙 ';
+    } else if (kind === 'score') {
+      col = '#a8f6ff';
+      glow = 'rgba(80,220,255,0.8)';
+      prefix = '★ ';
+    }
+    ctx.font = 'bold 13px Orbitron,Courier New,sans-serif';
+    ctx.shadowColor = glow;
+    ctx.shadowBlur = kind === 'score' ? 10 : 7;
+    ctx.fillStyle = col;
+    ctx.fillText(prefix + p.text, p.x, p.y);
+    if (kind === 'score') {
+      ctx.shadowBlur = 4;
+      ctx.font = 'bold 8px Orbitron,Courier New,sans-serif';
+      ctx.fillStyle = 'rgba(200,235,255,0.72)';
+      ctx.fillText('SCORE', p.x, p.y + 11);
+    } else if (kind === 'coin') {
+      ctx.shadowBlur = 3;
+      ctx.font = 'bold 8px Orbitron,Courier New,sans-serif';
+      ctx.fillStyle = 'rgba(255,230,190,0.7)';
+      ctx.fillText('COIN', p.x, p.y + 11);
+    }
     ctx.shadowBlur = 0;
   }
-  ctx.globalAlpha = 1; ctx.textAlign = 'left';
+  ctx.globalAlpha = 1;
+  ctx.textAlign = 'left';
 }
 
 function drawStageClearAnim() {
@@ -1713,7 +2300,8 @@ function drawHitFlash() {
 }
 
 function drawScanlines() {
-  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  const band = game.state === 'playing' ? 0.022 : 0.12;
+  ctx.fillStyle = `rgba(0,0,0,${band})`;
   for (let y = 0; y < H; y += 4) ctx.fillRect(0, y, W, 2);
 }
 
@@ -1765,6 +2353,7 @@ export {
   drawLifeGainDisplay,
   drawLevelUpDisplay,
   drawEventBanner,
+  drawMeteorRainEnvOverlay,
   drawMatPopups,
   drawStageClearAnim,
   drawBossWarning,
@@ -1772,5 +2361,6 @@ export {
   drawHitFlash,
   drawScanlines,
   drawSurvivalTimer,
-  drawWaveBanner
+  drawWaveBanner,
+  drawCombatPlayerVignette
 };

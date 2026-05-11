@@ -410,6 +410,8 @@ export const UPGRADE_LV_COSTS=[
   [18000,{crystal:10,composite:1},35], // Lv8→9
   [25000,{crystal:10,composite:2,gems:3},40], // Lv9→10 (MAX)
 ];
+/** 各強化段階（UPGRADE_LV_COSTS と同じ index = 現在 Lv から次へ）に必要なプロフィール Lv */
+export const UPGRADE_PROFILE_LV_REQ = [1, 1, 2, 3, 4, 6, 8, 11, 14, 18];
 export const SHOP_MAX_LV=10;
 
 export const SHOP_ITEMS=[

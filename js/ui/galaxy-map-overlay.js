@@ -4,7 +4,13 @@
 import { escapeHtml } from '../app/escape-html.js';
 import { game } from '../game/game-store.js';
 import { CANVAS_H } from '../game/constants.js';
-import { CHAR_POOL, EXP_TABLE, SHIP_COLORS, SHIP_SHAPES } from '../game-data.js';
+import { CHAR_POOL, SHIP_COLORS, SHIP_SHAPES } from '../game-data.js';
+import { safeLocalStorageSetItem } from '../game/storage-helpers.js';
+import {
+  PROFILE_MAX_LEVEL,
+  getProfileLevelProgressFraction,
+  getProfileHeaderTooltipJa,
+} from '../game/profile-progress.js';
 import { drawShipShape } from '../draw/draw-ship-shape.js';
 import { drawDragonLordPortrait, isDragonLordChar } from '../draw/dragon-lord-portrait.js';
 import {
@@ -114,10 +120,20 @@ function showMapToast(msg) {
   mapToastUntil = Date.now() + 2400;
 }
 
-function expFillRatio(g) {
-  if (g.playerLevel >= 10) return 1;
-  const need = EXP_TABLE[Math.min(g.playerLevel, EXP_TABLE.length - 1)] || 1;
-  return Math.min(1, Math.max(0, (g.exp || 0) / need));
+function getGalaxyPortraitChar() {
+  const gid = game.galaxyPortraitCharId;
+  if (gid && game.gachaInventory?.[gid]) {
+    const c = CHAR_POOL.find((ch) => ch.id === gid);
+    if (c) return c;
+  }
+  const loadId = game.playerLoadout?.charId || 'char_basic';
+  const owned = CHAR_POOL.find((c) => c.id === loadId && game.gachaInventory?.[c.id]);
+  return owned || CHAR_POOL.find((c) => c.id === 'char_basic') || CHAR_POOL[0];
+}
+
+function persistGalaxyPortraitChar() {
+  const v = game.galaxyPortraitCharId && String(game.galaxyPortraitCharId).trim();
+  safeLocalStorageSetItem('invader_galaxy_portrait_char', v ? v.slice(0, 32) : '');
 }
 
 function fmtNum(n) {
@@ -172,6 +188,14 @@ function syncAreaModalDom() {
   const bd = els.areaBackdrop;
   if (!bd) return;
   const open = game.state === 'galaxy_map' && game.galaxyMapModal === 'area';
+  bd.classList.toggle('gm-hidden', !open);
+  bd.setAttribute('aria-hidden', open ? 'false' : 'true');
+}
+
+function syncPortraitModalDom() {
+  const bd = els.portraitBackdrop;
+  if (!bd) return;
+  const open = game.state === 'galaxy_map' && game.galaxyMapModal === 'portrait';
   bd.classList.toggle('gm-hidden', !open);
   bd.setAttribute('aria-hidden', open ? 'false' : 'true');
 }
@@ -259,7 +283,7 @@ function ensureMounted(canvas) {
   <span class="gm-node-planet" aria-hidden="true">
     <img class="gm-node-planet-img" src="${psrc}" alt="" draggable="false" />
   </span>
-  <span class="gm-node-lock" aria-hidden="true">🔒</span>
+  <span class="gm-node-lock" aria-hidden="true"><svg class="gm-lock-svg" viewBox="0 0 24 24" width="14" height="14" focusable="false" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2"/></svg></span>
   <span class="gm-node-label"><span class="gm-node-ja">${escapeHtml(p.nameJa)}</span></span>
   <span class="gm-node-meta">
     <span class="gm-node-chip"></span>
@@ -272,17 +296,17 @@ function ensureMounted(canvas) {
 <div class="gm-layout">
   <header class="gm-header-bar">
     <div class="gm-h-profile">
-      <div class="gm-h-profile-inner">
-        <div class="gm-h-avatar-wrap">
+      <div class="gm-h-profile-inner" id="gm-profile-tip-anchor">
+        <div class="gm-h-avatar-wrap" id="gm-avatar-hit" role="button" tabindex="0" title="タップで所持キャラから選択" aria-label="マップ表示キャラを選択">
           <canvas class="gm-h-avatar-canvas" id="gm-h-avatar-canvas" width="40" height="40" aria-hidden="true"></canvas>
         </div>
         <div class="gm-h-profile-text">
           <div class="gm-h-profile-id" id="gm-profile-id">ID_PLAYER</div>
           <div class="gm-h-profile-row">
-            <div class="gm-h-exp-track" aria-hidden="true">
+            <div class="gm-h-exp-track" aria-hidden="true" title="プロフィール経験値">
               <div class="gm-h-exp-fill" id="gm-exp-fill"></div>
             </div>
-            <span class="gm-h-exp-pct" id="gm-exp-pct">0%</span>
+            <span class="gm-h-exp-pct" id="gm-exp-pct">Lv.1</span>
           </div>
         </div>
       </div>
@@ -294,12 +318,12 @@ function ensureMounted(canvas) {
     <div class="gm-h-resources">
       <div class="gm-h-resources-strips">
         <div class="gm-res-strip">
-          <span class="gm-res-icon gm-res-gem" aria-hidden="true">◆</span>
+          <span class="gm-res-icon gm-res-gem" aria-hidden="true">💎</span>
           <span class="gm-res-val" id="gm-res-gems">0</span>
           <button type="button" class="gm-res-plus" id="gm-gem-plus" aria-label="ショップへ">+</button>
         </div>
         <div class="gm-res-strip">
-          <span class="gm-res-icon gm-res-shard" aria-hidden="true">◇</span>
+          <span class="gm-res-icon gm-res-shard" aria-hidden="true">●</span>
           <span class="gm-res-val" id="gm-res-stardust">0</span>
           <button type="button" class="gm-res-plus" id="gm-dust-plus" aria-label="ショップへ">+</button>
         </div>
@@ -347,7 +371,7 @@ function ensureMounted(canvas) {
         <p class="gm-card-desc gm-hidden" id="gm-card-desc"></p>
         <div class="gm-card-actions">
           <button type="button" class="gm-go" id="gm-go" disabled><span class="gm-go-inner"><span class="gm-go-ic" aria-hidden="true">▶</span><span class="gm-go-txt">ステージ選択へ</span></span></button>
-          <button type="button" class="gm-go-sub" id="gm-go-sub"><span class="gm-go-sub-inner"><span class="gm-go-sub-ic" aria-hidden="true">🚀</span><span class="gm-go-sub-txt">出撃準備へ</span></span></button>
+          <button type="button" class="gm-go-sub" id="gm-go-sub"><span class="gm-go-sub-inner"><span class="gm-go-sub-ic" aria-hidden="true">▸</span><span class="gm-go-sub-txt">出撃準備へ</span></span></button>
         </div>
       </div>
     </aside>
@@ -358,8 +382,8 @@ function ensureMounted(canvas) {
       <button type="button" class="gm-f-nav-btn" data-gm-nav="home" title="ホーム"><span class="gm-f-nav-ic">⌂</span><span class="gm-f-nav-lab">ホーム</span></button>
       <button type="button" class="gm-f-nav-btn" data-gm-nav="hangar" title="出撃準備"><span class="gm-f-nav-ic">⛟</span><span class="gm-f-nav-lab">出撃準備</span></button>
       <button type="button" class="gm-f-nav-btn" data-gm-nav="upgrade" title="装備"><span class="gm-f-nav-ic">◆</span><span class="gm-f-nav-lab">装備</span></button>
-      <button type="button" class="gm-f-nav-btn" data-gm-nav="research" title="ガチャ"><span class="gm-f-nav-ic">✦</span><span class="gm-f-nav-lab">ガチャ</span></button>
-      <button type="button" class="gm-f-nav-btn" data-gm-nav="shop" title="強化"><span class="gm-f-nav-ic">$</span><span class="gm-f-nav-lab">強化</span></button>
+      <button type="button" class="gm-f-nav-btn" data-gm-nav="research" title="ガチャ"><span class="gm-f-nav-ic">▤</span><span class="gm-f-nav-lab">ガチャ</span></button>
+      <button type="button" class="gm-f-nav-btn" data-gm-nav="shop" title="強化"><span class="gm-f-nav-ic">▲</span><span class="gm-f-nav-lab">強化</span></button>
     </nav>
     <div class="gm-f-crumb"><span class="gm-f-crumb-glow" aria-hidden="true"></span><span class="gm-f-crumb-txt">銀河マップ</span></div>
   </footer>
@@ -367,12 +391,26 @@ function ensureMounted(canvas) {
   <div class="gm-toast gm-hidden" id="gm-toast" role="status"></div>
 
   <div class="gm-modal-backdrop gm-hidden" id="gm-area-backdrop" aria-hidden="true">
-    <div class="gm-modal-panel" role="dialog" aria-modal="true" aria-labelledby="gm-area-modal-title">
+    <div class="gm-modal-panel" id="gm-area-panel" role="dialog" aria-modal="true" aria-labelledby="gm-area-modal-title">
       <div class="gm-modal-head">
         <h2 class="gm-modal-title" id="gm-area-modal-title">エリア情報</h2>
         <button type="button" class="gm-modal-close" id="gm-area-modal-close" aria-label="閉じる">×</button>
       </div>
       <div class="gm-modal-body" id="gm-area-modal-body"></div>
+    </div>
+  </div>
+
+  <div class="gm-modal-backdrop gm-hidden" id="gm-portrait-backdrop" aria-hidden="true">
+    <div class="gm-modal-panel" id="gm-portrait-panel" role="dialog" aria-modal="true" aria-labelledby="gm-portrait-modal-title">
+      <div class="gm-modal-head">
+        <h2 class="gm-modal-title" id="gm-portrait-modal-title">マップ表示キャラ</h2>
+        <button type="button" class="gm-modal-close" id="gm-portrait-modal-close" aria-label="閉じる">×</button>
+      </div>
+      <div class="gm-modal-body">
+        <p class="gm-portrait-hint">所持しているキャラから選べます。編成と同じにすると出撃準備のキャラに追従します。</p>
+        <button type="button" class="gm-map-act gm-portrait-follow" id="gm-portrait-follow-loadout">編成と同じ（自動）</button>
+        <div class="gm-portrait-grid" id="gm-portrait-grid"></div>
+      </div>
     </div>
   </div>
 </div>`;
@@ -393,6 +431,8 @@ function ensureMounted(canvas) {
     avatarCanvas: root.querySelector('#gm-h-avatar-canvas'),
     expFill: root.querySelector('#gm-exp-fill'),
     expPct: root.querySelector('#gm-exp-pct'),
+    profileTipAnchor: root.querySelector('#gm-profile-tip-anchor'),
+    avatarHit: root.querySelector('#gm-avatar-hit'),
     resGems: root.querySelector('#gm-res-gems'),
     resStardust: root.querySelector('#gm-res-stardust'),
     toast: root.querySelector('#gm-toast'),
@@ -400,6 +440,9 @@ function ensureMounted(canvas) {
     routeDots: root.querySelectorAll('.gm-route-dot'),
     areaBackdrop: root.querySelector('#gm-area-backdrop'),
     areaBody: root.querySelector('#gm-area-modal-body'),
+    portraitBackdrop: root.querySelector('#gm-portrait-backdrop'),
+    portraitGrid: root.querySelector('#gm-portrait-grid'),
+    portraitFollow: root.querySelector('#gm-portrait-follow-loadout'),
   };
 
   for (const btn of els.nodes) {
@@ -436,7 +479,24 @@ function ensureMounted(canvas) {
     helpers?.playSound?.('select');
     closeAreaModal();
   });
-  root.querySelector('.gm-modal-panel')?.addEventListener('click', (ev) => ev.stopPropagation());
+  root.querySelector('#gm-area-panel')?.addEventListener('click', (ev) => ev.stopPropagation());
+
+  els.portraitBackdrop?.addEventListener('click', (ev) => {
+    if (ev.target === els.portraitBackdrop) closePortraitModal();
+  });
+  root.querySelector('#gm-portrait-modal-close')?.addEventListener('click', () => {
+    helpers?.playSound?.('select');
+    closePortraitModal();
+  });
+  root.querySelector('#gm-portrait-panel')?.addEventListener('click', (ev) => ev.stopPropagation());
+  els.portraitFollow?.addEventListener('click', () => {
+    helpers?.playSound?.('select');
+    game.galaxyPortraitCharId = null;
+    persistGalaxyPortraitChar();
+    showMapToast('マップ表示を編成に合わせました');
+    syncHeaderDom();
+    closePortraitModal();
+  });
 
   root.querySelector('#gm-gem-plus')?.addEventListener('click', () => {
     helpers?.playSound?.('select');
@@ -489,7 +549,70 @@ function ensureMounted(canvas) {
     }
   });
 
+  const avHit = els.avatarHit;
+  if (avHit) {
+    avHit.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      helpers?.playSound?.('select');
+      openPortraitPickerModal();
+    });
+    avHit.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        helpers?.playSound?.('select');
+        openPortraitPickerModal();
+      }
+    });
+  }
+
   mounted = true;
+}
+
+function closePortraitModal() {
+  if (game.galaxyMapModal === 'portrait') game.galaxyMapModal = null;
+  syncPortraitModalDom();
+}
+
+function fillPortraitGrid() {
+  const grid = els.portraitGrid;
+  if (!grid) return;
+  const owned = CHAR_POOL.filter((c) => game.gachaInventory?.[c.id]);
+  const curFixed = game.galaxyPortraitCharId;
+  const loadId = game.playerLoadout?.charId || 'char_basic';
+  const rows = owned
+    .map((c) => {
+      const sel = curFixed ? c.id === curFixed : c.id === loadId;
+      const cls = sel ? 'gm-portrait-cell gm-portrait-cell-sel' : 'gm-portrait-cell';
+      return `<button type="button" class="${cls}" data-char-id="${escapeHtml(c.id)}"><span class="gm-portrait-name">${escapeHtml(
+        c.label || c.id,
+      )}</span><span class="gm-portrait-r">${escapeHtml(c.rarity || '')}</span></button>`;
+    })
+    .join('');
+  grid.innerHTML = rows || '<p class="gm-modal-p">所持キャラがありません。</p>';
+  for (const btn of grid.querySelectorAll('button[data-char-id]')) {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-char-id');
+      if (!id || !game.gachaInventory?.[id]) return;
+      helpers?.playSound?.('select');
+      game.galaxyPortraitCharId = id;
+      persistGalaxyPortraitChar();
+      showMapToast(`${CHAR_POOL.find((c) => c.id === id)?.label || id} に設定`);
+      syncHeaderDom();
+      closePortraitModal();
+    });
+  }
+  const fol = els.portraitFollow;
+  if (fol) {
+    fol.classList.toggle('gm-portrait-follow-sel', !curFixed);
+  }
+}
+
+function openPortraitPickerModal() {
+  game.galaxyMapModal = 'portrait';
+  fillPortraitGrid();
+  syncAreaModalDom();
+  syncPortraitModalDom();
 }
 
 function onPlanetClick(planetId) {
@@ -507,20 +630,22 @@ function syncHeaderDom() {
   const gEl = els.resGems;
   const dustEl = els.resStardust;
   const displayName = (game.displayName && String(game.displayName).trim()) || 'PLAYER';
-  const loadout = game.playerLoadout && typeof game.playerLoadout === 'object' ? game.playerLoadout : {};
-  const charId = loadout.charId || 'char_basic';
-  const char = CHAR_POOL.find((c) => c.id === charId) || CHAR_POOL.find((c) => c.id === 'char_basic') || CHAR_POOL[0];
+  const char = getGalaxyPortraitChar();
   if (idEl) {
     const fid = formatGalaxyHeaderPlayerId(displayName);
     idEl.textContent = fid;
     const raw = String(displayName).trim();
     idEl.setAttribute('title', raw && raw !== fid ? `${raw} · ${fid}` : fid);
   }
-  const r = expFillRatio(game);
-  if (fill) fill.style.width = `${Math.round(r * 100)}%`;
-  if (pctEl) pctEl.textContent = game.playerLevel >= 10 ? 'MAX' : `${Math.round(r * 100)}%`;
+  const profLv = Math.max(1, Math.min(PROFILE_MAX_LEVEL, Math.floor(game.profileLevel || 1)));
+  const profProg = getProfileLevelProgressFraction(game);
+  if (fill) fill.style.width = `${Math.round(profProg * 100)}%`;
+  if (pctEl) pctEl.textContent = `Lv.${profLv}`;
   if (gEl) gEl.textContent = fmtNum(game.gems);
   if (dustEl) dustEl.textContent = fmtNum(game.gachaStardust | 0);
+
+  const tip = els.profileTipAnchor;
+  if (tip) tip.setAttribute('title', getProfileHeaderTooltipJa(game));
 
   const cv = els.avatarCanvas;
   if (cv instanceof HTMLCanvasElement && cv.getContext) {
@@ -555,8 +680,9 @@ function syncHeaderDom() {
       const col = SHIP_COLORS[Math.max(0, Math.min(SHIP_COLORS.length - 1, game.shipColorIdx | 0))]?.hex || '#44aaff';
       try {
         const cpx = cssPx / 2;
-        const photo = isDragonLordChar(char)
-          && drawDragonLordPortrait(ctx, cpx, cpx, cssPx - 4, cssPx - 4, {
+        const photo =
+          isDragonLordChar(char) &&
+          drawDragonLordPortrait(ctx, cpx, cpx, cssPx - 4, cssPx - 4, {
             glowColor: char.color || '#ff2266',
             frameCount: game.frameCount || 0,
             tier: 'micro',
@@ -615,9 +741,9 @@ function syncCardAndNodes() {
       const pow = escapeHtml(p.recommendedPower != null ? fmtNum(p.recommendedPower) : '—');
       const feat = escapeHtml(p.featureJa || '—');
       els.cardRows.innerHTML = `
-<div class="gm-row gm-row-primary"><span class="gm-k"><span class="gm-row-ic" aria-hidden="true">≋</span>ステージ</span><span class="gm-v">${range}</span></div>
+<div class="gm-row gm-row-primary"><span class="gm-k"><span class="gm-row-ic" aria-hidden="true">≡</span>ステージ</span><span class="gm-v">${range}</span></div>
 <div class="gm-row gm-row-primary"><span class="gm-k"><span class="gm-row-ic" aria-hidden="true">⚡</span>推奨戦力</span><span class="gm-v">${pow}</span></div>
-<div class="gm-row gm-row-primary"><span class="gm-k"><span class="gm-row-ic" aria-hidden="true">☄</span>特徴</span><span class="gm-v gm-v-wrap">${feat}</span></div>
+<div class="gm-row gm-row-primary"><span class="gm-k"><span class="gm-row-ic" aria-hidden="true">✦</span>特徴</span><span class="gm-v gm-v-wrap">${feat}</span></div>
 <div class="gm-row gm-row-note"><span class="gm-v">最高到達 ${reach}　/　ボス ${boss}</span></div>`;
     } else {
       const hint = escapeHtml(p.unlockHintJa || '条件を満たすと解放されます');
@@ -729,6 +855,7 @@ export function syncGalaxyMapOverlay(canvas) {
     game.galaxyMapModal = null;
     lastGalaxyAssetProbeMs = 0;
     syncAreaModalDom();
+    syncPortraitModalDom();
     return;
   }
   root.classList.remove('gm-hidden');
@@ -742,4 +869,5 @@ export function syncGalaxyMapOverlay(canvas) {
   syncToast();
   if (game.galaxyMapModal === 'area') fillAreaModalBody();
   syncAreaModalDom();
+  syncPortraitModalDom();
 }

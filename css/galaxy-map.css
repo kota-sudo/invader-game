@@ -103,6 +103,20 @@
     0 0 14px rgba(255, 120, 50, 0.35);
 }
 
+.galaxy-map-root #gm-avatar-hit {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.galaxy-map-root #gm-avatar-hit:hover {
+  filter: brightness(1.08);
+}
+
+.galaxy-map-root #gm-avatar-hit:focus-visible {
+  outline: 2px solid rgba(120, 200, 255, 0.65);
+  outline-offset: 2px;
+}
+
 .galaxy-map-root .gm-h-avatar-canvas {
   display: block;
   vertical-align: top;
@@ -154,12 +168,15 @@
 }
 
 .galaxy-map-root .gm-h-exp-pct {
-  font-size: 9px;
-  font-weight: 800;
-  color: rgba(255, 200, 160, 0.9);
-  width: 2.2em;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: rgba(255, 210, 175, 0.96);
+  min-width: 3.4em;
+  width: auto;
   text-align: right;
   flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 .galaxy-map-root .gm-h-title-block {
@@ -173,11 +190,12 @@
 .galaxy-map-root .gm-h-title-en {
   font-size: clamp(13px, 2.6vw, 18px);
   font-weight: 900;
-  color: rgba(255, 248, 238, 0.98);
+  color: #fff4e8;
   text-shadow:
-    0 0 18px rgba(255, 120, 60, 0.4),
-    0 0 28px rgba(255, 80, 40, 0.22),
-    0 0 24px rgba(80, 160, 255, 0.18);
+    0 1px 0 rgba(0, 10, 24, 0.92),
+    0 0 18px rgba(255, 120, 60, 0.35),
+    0 0 28px rgba(255, 80, 40, 0.18),
+    0 0 20px rgba(80, 160, 255, 0.14);
   letter-spacing: 0.12em;
   white-space: nowrap;
   overflow: hidden;
@@ -235,18 +253,20 @@
 }
 
 .galaxy-map-root .gm-res-icon {
-  font-size: 10px;
-  opacity: 0.85;
+  font-size: 12px;
+  line-height: 1;
+  opacity: 0.95;
+  font-weight: 800;
 }
 
 .galaxy-map-root .gm-res-gem {
-  color: #6ad4ff;
-  text-shadow: 0 0 8px rgba(100, 200, 255, 0.5);
+  color: #bbddff;
+  text-shadow: 0 0 6px rgba(100, 200, 255, 0.45);
 }
 
 .galaxy-map-root .gm-res-shard {
-  color: #ffb24a;
-  text-shadow: 0 0 8px rgba(255, 160, 60, 0.45);
+  color: #ffd700;
+  text-shadow: 0 0 5px rgba(255, 200, 80, 0.35);
 }
 
 .galaxy-map-root .gm-res-coin {
@@ -655,19 +675,20 @@
   transform: translateX(-50%);
   z-index: 4;
   text-align: center;
-  font-size: 7px;
+  font-size: 8px;
   font-weight: 900;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   line-height: 1.2;
-  color: rgba(210, 235, 255, 0.88);
+  color: rgba(255, 160, 120, 0.95);
+  color: color-mix(in srgb, var(--gm-selected-theme) 78%, #fff8f0);
   text-shadow:
-    0 0 12px rgba(40, 80, 140, 0.55),
-    0 0 10px rgba(100, 180, 255, 0.28);
+    0 0 14px rgba(255, 120, 70, 0.38),
+    0 0 20px rgba(255, 100, 50, 0.2);
   white-space: nowrap;
   padding: 5px 12px 6px;
   border-radius: 999px;
   background: linear-gradient(180deg, rgba(8, 14, 28, 0.72), rgba(4, 8, 18, 0.88));
-  border: 1px solid rgba(100, 160, 220, 0.18);
+  border: 1px solid rgba(255, 140, 100, 0.28);
   box-shadow:
     0 6px 16px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 220, 180, 0.06);
@@ -794,17 +815,26 @@
 .galaxy-map-root .gm-node-lock {
   display: none;
   position: absolute;
-  top: 6px;
-  right: 10px;
-  font-size: 14px;
-  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.8));
+  top: 5px;
+  right: 8px;
+  width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  color: rgba(235, 244, 255, 0.9);
+  filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.9));
   z-index: 2;
 }
 
 .galaxy-map-root .gm-node-locked .gm-node-lock {
+  display: flex;
+  opacity: 0.72;
+  transform: scale(0.92);
+}
+
+.galaxy-map-root .gm-lock-svg {
   display: block;
-  opacity: 0.52;
-  transform: scale(0.88);
+  flex-shrink: 0;
 }
 
 .galaxy-map-root .gm-node-locked .gm-node-planet {
@@ -886,9 +916,13 @@
 }
 
 .galaxy-map-root .gm-node-ja {
-  font-size: 10px;
-  font-weight: 800;
-  color: rgba(240, 245, 255, 0.92);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: rgba(255, 230, 210, 0.95);
+  color: color-mix(in srgb, var(--gm-theme) 72%, #fff8f2);
+  text-shadow: 0 0 10px rgba(255, 120, 80, 0.22);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--gm-theme) 32%, transparent);
 }
 
 .galaxy-map-root .gm-node-en {
@@ -1150,16 +1184,18 @@
 }
 
 .galaxy-map-root .gm-card-title {
-  font-size: 15px;
+  font-size: clamp(15px, 2.4vw, 18px);
   font-weight: 900;
-  color: rgba(255, 160, 95, 0.98);
+  color: rgba(255, 155, 95, 0.98);
+  color: color-mix(in srgb, var(--gm-selected-theme) 88%, #fffaf4);
   text-align: center;
   margin: 0;
   padding-bottom: 2px;
   text-shadow:
-    0 0 12px rgba(255, 100, 50, 0.45),
-    0 0 22px rgba(255, 80, 40, 0.2);
-  letter-spacing: 0.06em;
+    0 1px 0 rgba(0, 10, 24, 0.75),
+    0 0 14px color-mix(in srgb, var(--gm-selected-theme) 40%, transparent),
+    0 0 22px rgba(255, 80, 40, 0.18);
+  letter-spacing: 0.08em;
 }
 
 .galaxy-map-root .gm-card-badge {
@@ -1188,9 +1224,9 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  font-size: 10px;
-  font-weight: 700;
-  color: rgba(220, 230, 250, 0.9);
+  font-size: 11px;
+  font-weight: 900;
+  color: rgba(255, 247, 240, 0.94);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1216,9 +1252,11 @@
 
 .galaxy-map-root .gm-row-note .gm-v {
   text-align: center;
-  color: rgba(165, 184, 215, 0.68);
-  font-size: 8px;
-  font-weight: 700;
+  color: rgba(195, 205, 228, 0.82);
+  color: color-mix(in srgb, var(--gm-selected-theme) 42%, rgba(200, 215, 240, 0.82));
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
 }
 
 .galaxy-map-root .gm-row-muted .gm-v {
@@ -1231,23 +1269,28 @@
 .galaxy-map-root .gm-k {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  color: rgba(255, 170, 120, 0.82);
-  font-size: 9px;
+  gap: 5px;
+  color: rgba(255, 165, 120, 0.95);
+  color: color-mix(in srgb, var(--gm-selected-theme) 82%, #fffaf4);
+  font-size: 10px;
+  font-weight: 900;
   line-height: 1.35;
   word-break: keep-all;
   overflow-wrap: anywhere;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 10px color-mix(in srgb, var(--gm-selected-theme) 28%, transparent);
 }
 
 .galaxy-map-root .gm-row-ic {
   flex-shrink: 0;
-  width: 1em;
+  width: 1.1em;
   text-align: center;
-  font-size: 8px;
+  font-size: 11px;
   line-height: 1;
-  opacity: 0.82;
-  color: rgba(255, 200, 140, 0.95);
-  text-shadow: 0 0 6px rgba(255, 120, 60, 0.35);
+  opacity: 0.92;
+  font-weight: 900;
+  color: rgba(235, 244, 255, 0.88);
+  text-shadow: 0 0 8px rgba(80, 150, 220, 0.25);
 }
 
 .galaxy-map-root .gm-v {
@@ -1256,6 +1299,10 @@
   line-height: 1.35;
   min-width: 0;
   overflow-wrap: anywhere;
+  font-weight: 900;
+  font-size: 11px;
+  color: #fff4e8;
+  letter-spacing: 0.03em;
 }
 
 .galaxy-map-root .gm-v-wrap {
@@ -1289,11 +1336,13 @@
 
 .galaxy-map-root .gm-card-desc {
   margin: 0;
-  font-size: 9px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 800;
   line-height: 1.45;
-  color: rgba(175, 190, 215, 0.88);
+  color: rgba(210, 222, 248, 0.9);
+  color: color-mix(in srgb, var(--gm-selected-theme) 22%, rgba(220, 232, 255, 0.9));
   flex-shrink: 0;
+  letter-spacing: 0.03em;
 }
 
 .galaxy-map-root .gm-card-actions {
@@ -1330,10 +1379,12 @@
 }
 
 .galaxy-map-root .gm-go-ic {
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1;
-  opacity: 0.95;
-  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.4));
+  font-weight: 900;
+  opacity: 0.98;
+  color: #fffaf4;
+  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.45));
 }
 
 .galaxy-map-root .gm-go-txt {
@@ -1349,9 +1400,11 @@
 }
 
 .galaxy-map-root .gm-go-sub-ic {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1;
-  opacity: 0.88;
+  font-weight: 900;
+  opacity: 0.92;
+  color: rgba(235, 244, 255, 0.92);
 }
 
 .galaxy-map-root .gm-go:disabled {
@@ -1442,9 +1495,17 @@
 }
 
 .galaxy-map-root .gm-f-nav-ic {
-  font-size: 15px;
+  font-size: 13px;
   line-height: 1;
-  opacity: 0.78;
+  font-weight: 900;
+  opacity: 0.62;
+  color: rgba(188, 206, 232, 0.88);
+  text-shadow: 0 0 6px rgba(60, 100, 160, 0.2);
+}
+
+.galaxy-map-root .gm-f-nav-btn:hover .gm-f-nav-ic {
+  opacity: 1;
+  color: #fffce8;
 }
 
 .galaxy-map-root .gm-f-nav-lab {
@@ -1583,9 +1644,13 @@
 
 .galaxy-map-root .gm-modal-lead {
   margin: 0 0 8px;
-  font-size: 12px;
+  font-size: clamp(13px, 2.2vw, 16px);
   font-weight: 900;
-  color: #fff;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--gm-accent) 82%, #fffaf4);
+  text-shadow:
+    0 1px 0 rgba(0, 10, 24, 0.65),
+    0 0 12px rgba(255, 120, 60, 0.28);
 }
 
 .galaxy-map-root .gm-modal-en {
@@ -1616,6 +1681,61 @@
   color: rgba(255, 170, 120, 0.85);
   font-weight: 800;
   margin-right: 4px;
+}
+
+.galaxy-map-root .gm-portrait-hint {
+  margin: 0 0 10px;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.galaxy-map-root .gm-portrait-follow {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.galaxy-map-root .gm-portrait-follow-sel {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--gm-accent) 70%, #fff);
+}
+
+.galaxy-map-root .gm-portrait-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 8px;
+}
+
+.galaxy-map-root .gm-portrait-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(120, 160, 220, 0.35);
+  background: rgba(8, 14, 28, 0.88);
+  color: rgba(220, 228, 245, 0.95);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+
+.galaxy-map-root .gm-portrait-cell:hover {
+  border-color: color-mix(in srgb, var(--gm-accent) 55%, transparent);
+}
+
+.galaxy-map-root .gm-portrait-cell-sel {
+  border-color: color-mix(in srgb, var(--gm-accent) 75%, #fff);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--gm-accent) 35%, transparent);
+}
+
+.galaxy-map-root .gm-portrait-name {
+  letter-spacing: 0.04em;
+}
+
+.galaxy-map-root .gm-portrait-r {
+  font-size: 9px;
+  opacity: 0.75;
 }
 
 .galaxy-map-root .gm-hidden {

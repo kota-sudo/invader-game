@@ -5,6 +5,7 @@ import {
 import { saveCoins, saveGems } from './economy.js';
 import { saveMaterials, saveEquipStars, saveShop, addMaterial } from './materials.js';
 import { saveLoadout } from './equipment.js';
+import { getProfileLevelRequirementForUpgradeStep } from './profile-progress.js';
 import { playSound } from './audio.js';
 import { safeLocalStorageSetItem } from './storage-helpers.js';
 import { triggerShopHexBurst, getShopHexNodeInfo, getShopHexMysteryHint } from './draw-shop-hex.js';
@@ -86,11 +87,18 @@ export function getShopPrereqText(id, mode = 'solid') {
   return `必要: ${parts.join(' / ')}`;
 }
 
+export function getShopProfileReqText(upgradeFromLv) {
+  const need = getProfileLevelRequirementForUpgradeStep(upgradeFromLv);
+  return `プロフィール Lv${need}以上`;
+}
+
 export function canUpgradeShopItem(item) {
   const lv = game.shopUpgrades[item.id] || 0;
   if (lv >= SHOP_MAX_LV) return false;
   const [cost, mats, stReq] = getUpgradeLvCost(lv);
   if (game.highestStage < stReq) return false;
+  const pReq = getProfileLevelRequirementForUpgradeStep(lv);
+  if ((game.profileLevel || 1) < pReq) return false;
   if (!isShopPrereqsMet(item.id, 'solid')) return false;
   if (game.coins < cost) return false;
   for (const [k, v] of Object.entries(mats)) {
@@ -111,6 +119,8 @@ export function applyShopUpgrade(idx) {
   if (lv >= SHOP_MAX_LV) return;
   const [cost, mats, stReq] = getUpgradeLvCost(lv);
   if (game.highestStage < stReq) return;
+  const pReq = getProfileLevelRequirementForUpgradeStep(lv);
+  if ((game.profileLevel || 1) < pReq) return;
   if (!isShopPrereqsMet(item.id, 'solid')) return;
   if (game.coins < cost) return;
   for (const [k, v] of Object.entries(mats)) {
@@ -301,6 +311,12 @@ export function updateShopPanel(id) {
         reqInfoEl.textContent = `⚠ ${pt}`;
         reqInfoEl.style.display = 'block';
       }
+    } else if (isShopItem && lv < maxLv && isShopPrereqsMet(id)) {
+      const pReq = getProfileLevelRequirementForUpgradeStep(lv);
+      if ((game.profileLevel || 1) < pReq) {
+        reqInfoEl.textContent = `⚠ ${getShopProfileReqText(lv)}（現在 Lv${game.profileLevel || 1}）`;
+        reqInfoEl.style.display = 'block';
+      }
     }
   }
 
@@ -351,6 +367,9 @@ export function updateShopPanel(id) {
       const [, , stReq] = getUpgradeLvCost(lv);
       if (game.highestStage < stReq) {
         btn.textContent = `🔒 ステージ${stReq}クリアが必要 (現在: ${game.highestStage})`;
+        btn.className = 'off';
+      } else if ((game.profileLevel || 1) < getProfileLevelRequirementForUpgradeStep(lv)) {
+        btn.textContent = `🔒 ${getShopProfileReqText(lv)}が必要`;
         btn.className = 'off';
       } else if (!canUpgradeShopItem(item)) {
         btn.textContent = game.coins < coinCost ? '🪙 コイン不足' : '素材が足りない';
@@ -445,16 +464,18 @@ export function applyLoadoutPreset(slot) {
   playSound('powerup');
 }
 
-export function dropMaterial() {
+export function dropMaterial(atX, atY) {
   const p = getPlanet(game.stage).name;
   const r = Math.random();
+  const wx = Number.isFinite(atX) ? atX : undefined;
+  const wy = Number.isFinite(atY) ? atY : undefined;
   if (p === 'MARS') {
-    if (r < 0.45) addMaterial('scrap');
+    if (r < 0.45) addMaterial('scrap', 1, wx, wy);
   } else if (p === 'VENUS' || p === 'JUPITER') {
-    if (r < 0.25) addMaterial('scrap');
-    if (r >= 0.25 && r < 0.55) addMaterial('core');
+    if (r < 0.25) addMaterial('scrap', 1, wx, wy);
+    if (r >= 0.25 && r < 0.55) addMaterial('core', 1, wx, wy);
   } else {
-    if (r < 0.30) addMaterial('crystal');
-    if (r >= 0.30 && r < 0.50) addMaterial('core', Math.random() < 0.4 ? 2 : 1);
+    if (r < 0.30) addMaterial('crystal', 1, wx, wy);
+    if (r >= 0.30 && r < 0.50) addMaterial('core', Math.random() < 0.4 ? 2 : 1, wx, wy);
   }
 }

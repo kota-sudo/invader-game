@@ -113,6 +113,7 @@ export function runUpdate() {
     }
     if(game.state!=='playing') return;
     game.frameCount++;
+    game.runPlayFrames = (game.runPlayFrames || 0) + 1;
 
     for (const inv of game.invaders) {
       if (inv.hitFlashTimer > 0) inv.hitFlashTimer--;
@@ -123,17 +124,20 @@ export function runUpdate() {
       if(s.y>H){s.y=-2;s.x=Math.random()*W;}
     }
     if(game.stageClearAnimTimer>0){ game.stageClearAnimTimer--; if(game.stageClearAnimTimer===0&&game.stageResultData){ game.state='stage_result'; } }
-    game.matPopups=game.matPopups.filter(p=>{p.y+=p.vy; p.timer--; return p.timer>0;});
+    game.matPopups=game.matPopups.filter(p=>{
+      p.y+=p.vy; p.x+=(p.vx||0); p.timer--; return p.timer>0;
+    });
     if(game.stageBannerTimer>0) game.stageBannerTimer--;
     if(game.bossWarningTimer>0) game.bossWarningTimer--;
     if(game.powerupActive){game.powerupTimer--;if(game.powerupTimer<=0)game.powerupActive=null;}
     if(game.player.invincibleTimer>0) game.player.invincibleTimer--;
     if(game.hitFlashTimer>0) game.hitFlashTimer--;
     if(game.comboTimer>0){game.comboTimer--;if(game.comboTimer===0)game.combo=0;}
-    if(game.comboDisplay){game.comboDisplay.y-=0.5;game.comboDisplay.timer--;if(game.comboDisplay.timer<=0)game.comboDisplay=null;}
+    if(game.comboDisplay){game.comboDisplay.y-=0.92;game.comboDisplay.timer--;if(game.comboDisplay.timer<=0)game.comboDisplay=null;}
     if(game.lifeGainDisplay){game.lifeGainDisplay.timer--;if(game.lifeGainDisplay.timer<=0)game.lifeGainDisplay=null;}
     if(game.levelUpDisplay){game.levelUpDisplay.timer--;if(game.levelUpDisplay.timer<=0)game.levelUpDisplay=null;}
     game.muzzleFlashes=game.muzzleFlashes.filter(m=>{m.timer--;return m.timer>0;});
+    if(game.dragonLordFirePoseTimer>0) game.dragonLordFirePoseTimer--;
     if(game.ultimateActive){
       game.ultimateTimer--;
       if(game.ultimateTimer<=0) game.ultimateActive=false;
@@ -160,6 +164,7 @@ export function runUpdate() {
     const _chaosSpdMult=(game.chaosBuff?.type==='speed'&&(game.chaosBuff.timer||0)>0)?1.5:1;
     const pspd=(PLAYER_SPEED_BASE+game.playerUpgrades.speed+_shSpd+game.playerStats.spd)*_chaosSpdMult;
     if(game.dashTimer===0){
+      const _ox=game.player.x,_oy=game.player.y;
       if(keys['ArrowLeft']||keys['KeyA']) game.player.x=Math.max(0,game.player.x-pspd);
       if(keys['ArrowRight']||keys['KeyD']) game.player.x=Math.min(W-game.player.w,game.player.x+pspd);
       if(keys['ArrowUp']||keys['KeyW']) game.player.y=Math.max(H/2,game.player.y-pspd);
@@ -181,6 +186,9 @@ export function runUpdate() {
         const td=Math.sqrt(tdx*tdx+tdy*tdy);
         if(td>1){ const ts=Math.min(td*0.3,pspd*2.5); game.player.x+=tdx/td*ts; game.player.y+=tdy/td*ts; }
       }
+      game.playerBattleMoved=Math.abs(game.player.x-_ox)>0.15||Math.abs(game.player.y-_oy)>0.15;
+    } else {
+      game.playerBattleMoved=false;
     }
 
     // 通常射撃（チャージ中は撃てない）
@@ -188,7 +196,7 @@ export function runUpdate() {
       const cooldown=Math.max(8,20-game.playerUpgrades.firerate*3-(game.powerupActive==='double'?8:0));
       if((keys['KeyZ']||keys['Space']||game.touchPos||game.joystick?.active)&&game.frameCount-game.lastShot>cooldown){
         actions.fireBullet();
-        game.muzzleFlashes.push({x:game.player.x+game.player.w/2,y:game.player.y-4,timer:8,maxTimer:8});
+        game.muzzleFlashes.push({ x: game.player.x + game.player.w / 2, y: game.player.y - 4, timer: 8, maxTimer: 8, kind: 'normal' });
         game.lastShot=game.frameCount;
       }
     }
@@ -350,18 +358,65 @@ export function runUpdate() {
         if(game.chaosBuff.timer<=0) game.chaosBuff=null;
       }
     }
-    // magnet (loadout) + spc2 shop magnet
+    // magnet (loadout) + spc2 shop magnet + コインドロップ吸引
     {
       const _spc2Lv=game.shopUpgrades?.spc2||0;
       const _magR=game.playerUpgrades.magnet?180:0;
       const _spc2R=_spc2Lv>0?60+_spc2Lv*20:0;
       const _mRange=Math.max(_magR,_spc2R);
+      const px=game.player.x+game.player.w/2, py=game.player.y+game.player.h/2;
       if(_mRange>0){
-        const px=game.player.x+game.player.w/2, py=game.player.y+game.player.h/2;
         for(const p of game.powerups){
           const dx=px-(p.x+p.w/2), dy=py-(p.y+p.h/2);
           const dist=Math.sqrt(dx*dx+dy*dy)||1;
           if(dist<_mRange){p.x+=dx/dist*4; p.y+=dy/dist*4;}
+        }
+      }
+      const drops = game.coinPickups;
+      if (drops?.length) {
+        const pullZone = Math.max(_mRange, 96);
+        for (let i = drops.length - 1; i >= 0; i--) {
+          const c = drops[i];
+          c.age = (c.age | 0) + 1;
+          c.rot = (c.rot || 0) + 0.085;
+          const dx = px - c.x;
+          const dy = py - c.y;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          const urgent = c.age > 380 ? 1.85 : c.age > 240 ? 1.35 : 1;
+          if (dist < pullZone || c.age > 260) {
+            const pull = dist < 40 ? 6.8 * urgent : dist < pullZone ? 3.5 * urgent : 0;
+            c.x += (dx / dist) * pull;
+            c.y += (dy / dist) * pull;
+          }
+          c.vy = ((c.vy ?? 0.4) * 0.96) + 0.12;
+          c.vx = (c.vx || 0) * 0.93;
+          c.x += c.vx;
+          c.y += c.vy;
+          const coinHit =
+            dist < 26 ||
+            actions.rectsOverlap({ x: c.x - 11, y: c.y - 9, w: 22, h: 18 }, game.player);
+          if (coinHit) {
+            actions.addCoins(c.amount);
+            game.matPopups.push({
+              x: c.x,
+              y: c.y - 12,
+              text: `+${c.amount}`,
+              kind: 'coin',
+              timer: 48,
+              vy: -1.12,
+              vx: (Math.random() - 0.5) * 0.25,
+            });
+            actions.spawnExplosion(c.x, c.y, '#ffd070', 8);
+            actions.playSound('powerup');
+            actions.updateHUD();
+            drops.splice(i, 1);
+            continue;
+          }
+          if (c.y > H + 40 || c.age > 700) {
+            actions.addCoins(c.amount);
+            actions.updateHUD();
+            drops.splice(i, 1);
+          }
         }
       }
     }
@@ -521,8 +576,22 @@ export function runUpdate() {
           actions.spawnExplosion(inv.x+inv.w/2,inv.y+inv.h/2,color,inv.invType==='tank'?18:10);
           actions.spawnPowerup(inv.x+inv.w/2,inv.y+inv.h);
           actions.addExp(inv.invType==='tank'?30:inv.invType==='sniper'?20:10); actions.playSound('explosion'); actions.vibrate(15);
-          if(Math.random()<0.35) actions.addCoins(inv.invType==='tank'?6:inv.invType==='sniper'?5:3+Math.floor(Math.random()*3));
-          actions.dropMaterial();
+          if (Math.random() < 0.35) {
+            const coinAmt = inv.invType === 'tank' ? 6 : inv.invType === 'sniper' ? 5 : 3 + Math.floor(Math.random() * 3);
+            if (!game.coinPickups) game.coinPickups = [];
+            game.coinPickups.push({
+              x: inv.x + inv.w / 2 + (Math.random() - 0.5) * 20,
+              y: inv.y + inv.h / 2,
+              amount: coinAmt,
+              vx: (Math.random() - 0.5) * 1.1,
+              vy: 0.28 + Math.random() * 0.22,
+              rot: Math.random() * Math.PI * 2,
+              phase: Math.random() * Math.PI * 2,
+              age: 0,
+              alive: true,
+            });
+          }
+          actions.dropMaterial(inv.x + inv.w / 2, inv.y + inv.h / 2);
           // ene_chain: 電撃連鎖
           if((game.shopUpgrades?.ene_chain||0)>=1){
             const _lvEC=game.shopUpgrades.ene_chain;
@@ -558,7 +627,17 @@ export function runUpdate() {
         if(actions.rectsOverlap(game.bullets[i],game.ufo)){
           game.bullets.splice(i,1);
           actions.spawnExplosion(game.ufo.x+game.ufo.w/2,game.ufo.y+game.ufo.h/2,'#f0f',16);
-          game.score+=game.ufo.points; game.comboDisplay={x:game.ufo.x,y:game.ufo.y,text:`UFO +${game.ufo.points}`,timer:80};
+          game.score+=game.ufo.points;
+          game.matPopups.push({
+            x: game.ufo.x + game.ufo.w / 2,
+            y: game.ufo.y + game.ufo.h / 2 - 6,
+            text: `+${game.ufo.points}`,
+            kind: 'score',
+            timer: 54,
+            vy: -1.08,
+            vx: (Math.random() - 0.5) * 0.4,
+          });
+          game.runEnemyKills = (game.runEnemyKills || 0) + 1;
           actions.addExp(25); actions.addCoins(30+Math.floor(Math.random()*30)); actions.updateHUD(); game.ufo=null; break;
         }
       }

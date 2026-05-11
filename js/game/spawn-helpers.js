@@ -44,7 +44,7 @@ export function spawnBoss() {
 }
 
 export function spawnDmgNum(x, y, val, isCrit = false, isHeal = false) {
-  game.damageNumbers.push({ x, y: y - 10, val, isCrit, isHeal, timer: 55, vy: -1.8 });
+  game.damageNumbers.push({ x, y: y - 10, val, isCrit, isHeal, timer: 40, vy: -2.35 });
 }
 
 export function spawnExplosion(x, y, color, count = 12) {

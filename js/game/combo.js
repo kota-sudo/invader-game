@@ -3,6 +3,7 @@ import { playSound } from './audio.js';
 
 export function addCombo(x, y, baseScore) {
   actions.ensureNormalQuestProfile();
+  if (game.state === 'playing') game.runEnemyKills = (game.runEnemyKills || 0) + 1;
   game.questLifetime.totalKills++;
   game.combo++; game.comboTimer = 90; game.stageStats.kills++;
   game.stageStats.maxCombo = Math.max(game.stageStats.maxCombo, game.combo);

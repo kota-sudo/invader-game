@@ -17,7 +17,14 @@ import { drawShipShape } from './draw-ship-shape.js';
 import { drawDragonLordPortrait, isDragonLordChar } from './dragon-lord-portrait.js';
 import { hexToRgb } from '../game/color-utils.js';
 import { wrapFillJp, truncateLine } from './canvas-utils.js';
-import { STARDUST_SHOP_ITEMS } from '../game/stardust-shop.js';
+import {
+  getStardustShopItems,
+  getStardustShopCycleIndex,
+  getMsUntilNextStardustShopCycle,
+  formatStardustShopRotationCountdownJa,
+  getNextStardustShopPreviewLines,
+  STARDUST_SHOP_WEEK_COUNT,
+} from '../game/stardust-shop.js';
 import { canDailyGacha } from '../game/gacha.js';
 import { playSound } from '../game/audio.js';
 
@@ -2057,9 +2064,28 @@ export function drawStardustShop() {
   ctx.fillStyle = '#555'; ctx.font = '11px Orbitron,Courier New';
   ctx.fillText('ガチャの重複で獲得 / 上限MAX時に変換', W / 2, 102);
 
-  const itemH = 118, startY = 124, itemW = 600, startX = (W - itemW) / 2;
+  const shopItems = getStardustShopItems();
+  game.stardustShopCursor = Math.max(0, Math.min(shopItems.length - 1, game.stardustShopCursor | 0));
+  const cyc = getStardustShopCycleIndex();
+  const msLeft = getMsUntilNextStardustShopCycle();
+  const countdown = formatStardustShopRotationCountdownJa(msLeft);
+  ctx.fillStyle = 'rgba(130, 150, 190, 0.95)';
+  ctx.font = 'bold 10px Orbitron,"Hiragino Sans","Yu Gothic",sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`週替わりラインナップ ${cyc + 1}/${STARDUST_SHOP_WEEK_COUNT} · 次回更新まで ${countdown}`, W / 2, 118);
+  const nextLines = getNextStardustShopPreviewLines();
+  const preview = nextLines.join('  ·  ');
+  const previewShort = preview.length > 76 ? `${preview.slice(0, 74)}…` : preview;
+  ctx.fillStyle = 'rgba(160, 175, 210, 0.88)';
+  ctx.font = '9px Orbitron,"Hiragino Sans","Yu Gothic",sans-serif';
+  ctx.fillText(`次回: ${previewShort}`, W / 2, 134);
+
+  const itemH = 118,
+    startY = 148,
+    itemW = 600,
+    startX = (W - itemW) / 2;
   const costBoxW = 120, costBoxH = 48, rightPad = 12;
-  STARDUST_SHOP_ITEMS.forEach((item, i) => {
+  shopItems.forEach((item, i) => {
     const y = startY + i * (itemH + 10);
     const active = game.stardustShopCursor === i;
     const canAfford = game.gachaStardust >= item.cost;
@@ -2130,7 +2156,7 @@ export function drawStardustShop() {
   });
 
   const buyY = H - 50, buyW = 220, buyH = 40, buyX = (W - buyW) / 2;
-  const curIt = STARDUST_SHOP_ITEMS[game.stardustShopCursor];
+  const curIt = shopItems[game.stardustShopCursor];
   const canBuy = curIt && game.gachaStardust >= curIt.cost;
   ctx.fillStyle = canBuy ? 'rgba(60,40,100,0.95)' : 'rgba(28,28,32,0.9)'; ctx.strokeStyle = canBuy ? '#cc88ff' : '#333'; ctx.lineWidth = canBuy ? 2 : 1;
   ctx.beginPath(); ctx.roundRect(buyX, buyY, buyW, buyH, 10); ctx.fill(); ctx.stroke();

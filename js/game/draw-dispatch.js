@@ -57,7 +57,7 @@ function paintFrameBody(d) {
 
   const theme = d.getTheme();
   d.ctx.save();
-  if (d.shakeTimer > 0 && d.state === 'playing') {
+  if (d.shakeTimer > 0 && d.state === 'playing' && !d.paused) {
     d.ctx.translate((Math.random() - 0.5) * d.shakeIntensity, (Math.random() - 0.5) * d.shakeIntensity);
   }
   d.ctx.fillStyle = theme.bg;
@@ -271,16 +271,33 @@ function paintFrameBody(d) {
     return;
   }
 
+  const g = d.game;
+  const realFrameCount = g.frameCount;
+  if (!d.paused) {
+    g.pauseAnimFrame = null;
+  } else if (g.pauseAnimFrame == null) {
+    g.pauseAnimFrame = realFrameCount;
+  }
+  if (d.paused) g.frameCount = g.pauseAnimFrame;
+
   try {
     const drewBattleBackdrop =
       typeof d.drawBattleBackground === 'function' ? d.drawBattleBackground() : false;
     d.drawStarfield();
+    // プレイ優先：星雲ティントは背景ムード用なので戦闘中は控えめ（自機・弾・敵が前面に）
     d.ctx.fillStyle = theme.nebula;
     if (drewBattleBackdrop) {
-      d.ctx.globalAlpha = 0.32;
+      d.ctx.globalAlpha = 0.11;
       d.ctx.fillRect(0, 0, d.W, d.H);
       d.ctx.globalAlpha = 1;
     } else {
+      d.ctx.globalAlpha = 0.88;
+      d.ctx.fillRect(0, 0, d.W, d.H);
+      d.ctx.globalAlpha = 1;
+    }
+    // 戦闘中のみ背景主張を一段抑える（岩・星の情報量はそのまま、全体トーンをゲーム層に譲る）
+    if (d.state === 'playing') {
+      d.ctx.fillStyle = 'rgba(1, 3, 12, 0.12)';
       d.ctx.fillRect(0, 0, d.W, d.H);
     }
 
@@ -295,13 +312,15 @@ function paintFrameBody(d) {
     d.drawBossMinions();
     if (d.ufo) d.drawUFO();
     d.drawPowerups();
+    if (d.drawCoinPickups) d.drawCoinPickups();
     d.drawPlayer();
     d.drawPets();
     d.drawBullets();
     d.drawMuzzleFlashes();
     d.drawParticles();
-    d.updateDamageNumbers();
+    if (!d.paused) d.updateDamageNumbers();
     d.drawDamageNumbers();
+    if (d.drawCombatPlayerVignette) d.drawCombatPlayerVignette();
     d.drawGroundLine(theme.ground);
     d.drawHUD(theme.accent);
     d.drawBossWarning(theme);
@@ -311,6 +330,7 @@ function paintFrameBody(d) {
     d.drawLifeGainDisplay();
     d.drawLevelUpDisplay();
     d.drawEventBanner();
+    if (d.drawMeteorRainEnvOverlay) d.drawMeteorRainEnvOverlay();
     d.drawMatPopups();
     if (d.stageClearAnimTimer > 0) d.drawStageClearAnim();
     d.drawJoystick();
@@ -322,6 +342,7 @@ function paintFrameBody(d) {
     if (d.paused) d.drawPauseOverlay();
     if (d.state === 'gameover') d.drawGameOverOverlay();
   } finally {
+    if (d.paused) g.frameCount = realFrameCount;
     d.ctx.restore();
   }
 }

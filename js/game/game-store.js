@@ -99,12 +99,18 @@ export const game = {
   skillChoices: null,
   chargeTimer: 0,
   chargeReady: false,
+  /** 竜王立ち絵：チャージショット発射ポーズの残フレーム */
+  dragonLordFirePoseTimer: 0,
+  /** 竜王立ち絵：移動中（ダッシュ・溜め・発射ポーズより優先度低） */
+  playerBattleMoved: false,
   dashTimer: 0,
   dashCooldown: 0,
   dashTrail: [],
   currentEvent: null,
   eventTimer: 0,
   eventCooldown: 0,
+  /** 隕石イベント時の落下予測レーン（画面上の x、描画用） */
+  meteorEventLanes: null,
   meteors: [],
   asteroids: [],
   isAsteroidStage: false,
@@ -114,6 +120,8 @@ export const game = {
   minionSpawnTimer: 0,
   state: 'title',
   paused: false,
+  /** ポーズ中の描画：`frameCount` 依存の揺れを止めるための固定フレーム */
+  pauseAnimFrame: null,
   stageSelectIdx: 0,
   stageCharX: 90,
   stageCharY: 165,
@@ -124,8 +132,33 @@ export const game = {
   galaxyMapSelectedPlanetId: 'mars',
   /** 銀河マップ用トースト `{ msg, until: frameCount }` */
   galaxyMapToast: null,
-  /** 銀河マップ上のモーダル: `null` | `'area'`（エリア情報） */
+  /** 銀河マップ上のモーダル: `null` | `'area'` | `'portrait'` */
   galaxyMapModal: null,
+  /** 銀河マップヘッダーに表示するキャラ（所持かつ解放済み）。null なら編成キャラ */
+  galaxyPortraitCharId: (() => {
+    try {
+      const v = localStorage.getItem('invader_galaxy_portrait_char');
+      if (typeof v === 'string' && v.trim()) return v.trim().slice(0, 32);
+    } catch (e) {}
+    return null;
+  })(),
+  /** プロフィール Lv（ステージクリア EXP）。強化ティア・最大HP に影響 */
+  profileLevel: (() => {
+    try {
+      const n = parseInt(localStorage.getItem('invader_profile_level') || '1', 10);
+      return Number.isFinite(n) && n >= 1 ? n : 1;
+    } catch (e) {
+      return 1;
+    }
+  })(),
+  profileExp: (() => {
+    try {
+      const n = parseInt(localStorage.getItem('invader_profile_exp') || '0', 10);
+      return Number.isFinite(n) && n >= 0 ? n : 0;
+    } catch (e) {
+      return 0;
+    }
+  })(),
   /** ミッション画面を閉じたあと: `null`（customize）| `'galaxy_map'` */
   missionsReturnState: null,
   /** ミッション画面タブ: `daily` | `track` | `milestones` */
@@ -251,12 +284,24 @@ export const game = {
   bossRushMax: 2,
   bossRushDelay: 0,
   escortShip: null,
+  /** プレイラン（startGame〜ゲームオーバー）のリザルト用。startGame でリセット */
+  runStartCoins: 0,
+  runEnemyKills: 0,
+  runPlayFrames: 0,
   stageStats: { hits: 0, maxCombo: 0, kills: 0 },
+  /** ステージリザルト用：ボス／ミニボス撃破などランクボーナス以外のコイン・ジェム付与の累計（initStage でリセット） */
+  stageRewardLedger: { coins: 0, gems: 0 },
   stageRank: null,
   stageResultTimer: 0,
   stageResultData: null,
   stageClearAnimTimer: 0,
   matPopups: [],
+  /** 撃破時ドロップのコイン（吸引・取得で addCoins） */
+  coinPickups: [],
+  /** DOM HUD: ダメージ直後の HP 表現（frameCount まで） */
+  hudHpFlashUntil: 0,
+  /** DOM HUD: スコア加算時の演出（frameCount まで） */
+  hudScoreBumpUntil: 0,
   waveNum: 0,
   waveState: 'idle',
   waveKills: 0,

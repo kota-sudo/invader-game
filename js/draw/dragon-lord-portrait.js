@@ -2,14 +2,41 @@
  * 竜王（char_dragon_lord）の写真スプライト — バトル・編成UI・ヘッダ等で共有
  */
 import { getImage } from '../game/image-cache.js';
+import { game } from '../game/game-store.js';
+import { CHARGE_MAX } from '../game/constants.js';
+import { keyOutGreenAndFlatBackdrop } from './sprite-alpha-key.js';
+
+const _DL_CHROMA_CACHE_VER = 'v3';
 
 export const DRAGON_LORD_CHAR_ID = 'char_dragon_lord';
+/** UI（編成・ポートレート）：メイン待機絵 */
 export const DRAGON_LORD_SPRITE_SRC = './assets/player/dragon-lord.png';
 
+export const DRAGON_LORD_BATTLE_SRC = {
+  idle: './assets/player/dragon-lord.png',
+  move: './assets/player/dragon-lord-move.png',
+  chargeBuild: './assets/player/dragon-lord-charge-build.png',
+  chargeReady: './assets/player/dragon-lord-charge-ready.png',
+  dash: './assets/player/dragon-lord-dash.png',
+  fire: './assets/player/dragon-lord-fire.png',
+};
+
+/** main / sw 用プリロード一覧 */
+export const DRAGON_LORD_ALL_SPRITE_SRCS = [
+  DRAGON_LORD_BATTLE_SRC.idle,
+  DRAGON_LORD_BATTLE_SRC.move,
+  DRAGON_LORD_BATTLE_SRC.chargeBuild,
+  DRAGON_LORD_BATTLE_SRC.chargeReady,
+  DRAGON_LORD_BATTLE_SRC.dash,
+  DRAGON_LORD_BATTLE_SRC.fire,
+];
+
 const _dlChromaCache = new Map();
-function getDragonLordChromaCanvas() {
-  if (_dlChromaCache.has(DRAGON_LORD_SPRITE_SRC)) return _dlChromaCache.get(DRAGON_LORD_SPRITE_SRC);
-  const img = getImage(DRAGON_LORD_SPRITE_SRC);
+
+function getDragonLordKeyedCanvas(src) {
+  const cacheKey = `${src}\0${_DL_CHROMA_CACHE_VER}`;
+  if (_dlChromaCache.has(cacheKey)) return _dlChromaCache.get(cacheKey);
+  const img = getImage(src);
   if (!img?.complete || !img.naturalWidth || img.naturalHeight <= 0) return null;
   const w = img.naturalWidth;
   const h = img.naturalHeight;
@@ -21,21 +48,26 @@ function getDragonLordChromaCanvas() {
   c.drawImage(img, 0, 0);
   try {
     const im = c.getImageData(0, 0, w, h);
-    const d = im.data;
-    for (let i = 0; i < d.length; i += 4) {
-      const r = d[i], g = d[i + 1], b = d[i + 2];
-      if (g > 210 && r < 110 && b < 110) d[i + 3] = 0; // greenscreen
-    }
+    keyOutGreenAndFlatBackdrop(im);
     c.putImageData(im, 0, 0);
   } catch (_) {
     return null;
   }
-  _dlChromaCache.set(DRAGON_LORD_SPRITE_SRC, cv);
+  _dlChromaCache.set(cacheKey, cv);
   return cv;
 }
 
+function pickDragonLordBattleSpriteSrc() {
+  if ((game.dragonLordFirePoseTimer || 0) > 0) return DRAGON_LORD_BATTLE_SRC.fire;
+  if (game.dashTimer > 0) return DRAGON_LORD_BATTLE_SRC.dash;
+  const ct = game.chargeTimer || 0;
+  if (ct >= CHARGE_MAX && game.chargeReady) return DRAGON_LORD_BATTLE_SRC.chargeReady;
+  if (ct >= 10) return DRAGON_LORD_BATTLE_SRC.chargeBuild;
+  if (game.playerBattleMoved) return DRAGON_LORD_BATTLE_SRC.move;
+  return DRAGON_LORD_BATTLE_SRC.idle;
+}
+
 function drawMaskedOverlayAfterSprite(ctx, drawOverlayFn) {
-  // Mask overlay to current destination alpha (i.e., the sprite we just drew).
   ctx.save();
   ctx.globalCompositeOperation = 'source-atop';
   try {
@@ -64,7 +96,7 @@ export function drawDragonLordPortrait(ctx, cx, cy, maxW, maxH, options = {}) {
   } = options;
   const img = getImage(DRAGON_LORD_SPRITE_SRC);
   if (!img?.complete || !img.naturalWidth || img.naturalHeight <= 0) return false;
-  const keyed = getDragonLordChromaCanvas();
+  const keyed = getDragonLordKeyedCanvas(DRAGON_LORD_SPRITE_SRC);
 
   const iw = img.naturalWidth;
   const ih = img.naturalHeight;
@@ -111,13 +143,13 @@ export function drawDragonLordPortrait(ctx, cx, cy, maxW, maxH, options = {}) {
     ctx.globalAlpha = 0.34;
     if (typeof ctx.filter === 'string') {
       ctx.filter = 'brightness(0.4)';
-      const keyed = getDragonLordChromaCanvas();
-      if (keyed) ctx.drawImage(keyed, 0, 0, iw, ih, dx + 2, dy + 2.5, dw, dh);
+      const k = getDragonLordKeyedCanvas(DRAGON_LORD_SPRITE_SRC);
+      if (k) ctx.drawImage(k, 0, 0, iw, ih, dx + 2, dy + 2.5, dw, dh);
       else ctx.drawImage(img, 0, 0, iw, ih, dx + 2, dy + 2.5, dw, dh);
       ctx.filter = 'none';
     } else {
-      const keyed = getDragonLordChromaCanvas();
-      if (keyed) ctx.drawImage(keyed, 0, 0, iw, ih, dx + 2, dy + 2.5, dw, dh);
+      const k = getDragonLordKeyedCanvas(DRAGON_LORD_SPRITE_SRC);
+      if (k) ctx.drawImage(k, 0, 0, iw, ih, dx + 2, dy + 2.5, dw, dh);
       else ctx.drawImage(img, 0, 0, iw, ih, dx + 2, dy + 2.5, dw, dh);
     }
     ctx.globalAlpha = 1;
@@ -155,10 +187,12 @@ export function drawDragonLordPortrait(ctx, cx, cy, maxW, maxH, options = {}) {
 
 /** バトル画面：プレイヤー矩形内に立体ライティング付きで描画 */
 export function drawDragonLordBattle(ctx, p, frameCount) {
-  const img = getImage(DRAGON_LORD_SPRITE_SRC);
-  if (!img?.complete || !img.naturalWidth || img.naturalHeight <= 0) return false;
   if (!p || !Number.isFinite(p.x)) return false;
-  const keyed = getDragonLordChromaCanvas();
+
+  const src = pickDragonLordBattleSpriteSrc();
+  const img = getImage(src);
+  if (!img?.complete || !img.naturalWidth || img.naturalHeight <= 0) return false;
+  const keyed = getDragonLordKeyedCanvas(src);
 
   const iw = img.naturalWidth;
   const ih = img.naturalHeight;
@@ -169,7 +203,10 @@ export function drawDragonLordBattle(ctx, p, frameCount) {
   const dy = p.y + (p.h - dh) / 2 - 6;
   const cy = dy + dh / 2;
   const pulse = 0.65 + Math.sin(frameCount * 0.11) * 0.35;
-  const tilt = Math.sin(frameCount * 0.038) * 0.065;
+  const useDashRot = game.dashTimer > 0 && src === DRAGON_LORD_BATTLE_SRC.dash;
+  const vx = game.player?._dashVx || 0;
+  const vy = game.player?._dashVy || 0;
+  const dashAng = Math.atan2(vy, vx);
 
   const prevSmooth = ctx.imageSmoothingEnabled;
   ctx.imageSmoothingEnabled = false;
@@ -198,7 +235,12 @@ export function drawDragonLordBattle(ctx, p, frameCount) {
   ctx.fillRect(p.x - 24, dy - 24, p.w + 48, dh + 48);
 
   ctx.translate(cx, cy);
-  ctx.rotate(tilt);
+  if (useDashRot && (vx !== 0 || vy !== 0)) {
+    ctx.rotate(dashAng);
+    ctx.rotate(Math.sin(frameCount * 0.12) * 0.035);
+  } else {
+    ctx.rotate(Math.sin(frameCount * 0.038) * 0.065);
+  }
 
   ctx.save();
   ctx.globalAlpha = 0.38;
@@ -222,7 +264,6 @@ export function drawDragonLordBattle(ctx, p, frameCount) {
   if (keyed) ctx.drawImage(keyed, 0, 0, iw, ih, -dw / 2, -dh / 2, dw, dh);
   else ctx.drawImage(img, 0, 0, iw, ih, -dw / 2, -dh / 2, dw, dh);
 
-  // Masked lighting overlays (avoid rectangular look)
   drawMaskedOverlayAfterSprite(ctx, () => {
     const shade = ctx.createLinearGradient(-dw / 2 + dw * 0.12, -dh / 2, dw / 2 - dw * 0.05, dh / 2);
     shade.addColorStop(0, 'rgba(255, 248, 255, 0.42)');

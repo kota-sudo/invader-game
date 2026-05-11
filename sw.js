@@ -1,5 +1,5 @@
 /** index.html の `?v=` と同リリースで揃えるとキャッシュ不整合が減る */
-const CACHE = 'invader-core-mars-v18';
+const CACHE = 'invader-core-mars-v19';
 /** プリキャッシュ候補（1本でも失敗しても install を全体失敗させない） */
 const STATIC = [
   './index.html',
@@ -11,6 +11,11 @@ const STATIC = [
   './icons/icon-192.svg',
   './icons/icon-512.svg',
   './assets/player/dragon-lord.png',
+  './assets/player/dragon-lord-move.png',
+  './assets/player/dragon-lord-charge-build.png',
+  './assets/player/dragon-lord-charge-ready.png',
+  './assets/player/dragon-lord-dash.png',
+  './assets/player/dragon-lord-fire.png',
   './js/game-data.js',
   './js/game/game-store.js',
   './js/game/update-tick.js',

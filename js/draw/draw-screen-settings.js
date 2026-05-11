@@ -21,7 +21,7 @@ export function drawSettingsScreen() {
   ctx.shadowColor = '#44aaff'; ctx.shadowBlur = 8;
   ctx.fillText('設定', 20, 30); ctx.shadowBlur = 0;
 
-  const ROW = 60, startY = 70, LX = 40, VX = W - 40;
+  const ROW = 52, startY = 58, LX = 40, VX = W - 40;
   const rows = [
     { key: 'bgm', label: 'BGM', type: 'toggle' },
     { key: 'se', label: 'SE 音量', type: 'volume' },
@@ -89,4 +89,37 @@ export function drawSettingsScreen() {
   ctx.fillText((game.displayName || 'PLAYER').slice(0, 12), ntx + ntw / 2, nty + nth / 2 + 4);
   game._settingsHits.push({ key: 'display_name', type: 'name_btn', x: ntx - 4, y: nty - 4, w: ntw + 8, h: nth + 8 });
   ctx.textAlign = 'left';
+
+  const buY = nameY + ROW + 6;
+  ctx.fillStyle = rows.length % 2 === 0 ? 'rgba(255,255,255,0.03)' : 'transparent';
+  ctx.fillRect(0, buY - 6, W, ROW * 2 + 8);
+  ctx.fillStyle = '#8899aa';
+  ctx.font = '12px Orbitron,"Hiragino Sans","Yu Gothic",sans-serif';
+  ctx.fillText('セーブデータ（JSON）', LX, buY + 14);
+  const bw = Math.floor((VX - LX - 20) / 2);
+  const bx1 = LX;
+  const bx2 = LX + bw + 12;
+  const bty = buY + 22;
+  const bh = 30;
+  const drawSetBtn = (x, label, key) => {
+    ctx.fillStyle = 'rgba(24, 32, 52, 0.92)';
+    ctx.strokeStyle = 'rgba(80, 120, 200, 0.55)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(x, bty, bw, bh, 8);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#c8d8f0';
+    ctx.font = 'bold 10px Orbitron,"Hiragino Sans","Yu Gothic",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, x + bw / 2, bty + bh / 2 + 4);
+    ctx.textAlign = 'left';
+    game._settingsHits.push({ key, type: key, x, y: bty - 2, w: bw, h: bh + 4 });
+  };
+  drawSetBtn(bx1, '書き出し', 'save_export');
+  drawSetBtn(bx2, '読み込み', 'save_import');
+  ctx.fillStyle = 'rgba(100, 115, 135, 0.9)';
+  ctx.font = '9px Orbitron,"Hiragino Sans","Yu Gothic",sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('※読み込み後はページが再読み込みされます', LX, bty + bh + 14);
 }

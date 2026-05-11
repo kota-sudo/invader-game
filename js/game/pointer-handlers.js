@@ -16,6 +16,12 @@ import {
 } from './stage-select-map-geometry.js';
 import { isTitleTapLabelHovered } from './title-layout.js';
 import { isStageSelectOverlayBlockingCanvasPointer } from '../ui/stage-select-overlay.js';
+import { STAGE_RESULT_BUTTON_MIN_TIMER } from './constants.js';
+import { addGems } from './economy.js';
+import { saveGachaData } from './gacha.js';
+import { applySimulatedIAPPurchase } from './iap-purchase.js';
+import { appendCcDigit, backspaceCc, validateCcForm } from './iap-cc-input.js';
+import { downloadInvaderSaveJson, triggerInvaderSaveImportFilePick } from './save-backup.js';
 
 /**
  * Canvas mouse, wheel, and touch wiring (moved from main.js).
@@ -26,6 +32,8 @@ export function registerPointerInput(canvas, deps) {
     UI_BUTTONS,
     triggerFlash,
     tryContinueFromGameOver,
+    gameOverRetryFromStart,
+    gameOverGoStageSelect,
     showMessage,
     startBGM,
     initStars,
@@ -66,6 +74,17 @@ export function registerPointerInput(canvas, deps) {
     beginTitleFromTap,
   } = deps;
   const hideMessage = deps.hideMessage;
+
+  function hitStageResultCanvasBtn(mx, my) {
+    if (game.state !== 'stage_result' || game.stageResultTimer <= STAGE_RESULT_BUTTON_MIN_TIMER || !Array.isArray(game._stageResultHits)) return null;
+    const tp = 4;
+    const rh = game._stageResultHits.find(h =>
+      mx >= h.x - tp && mx <= h.x + h.w + tp && my >= h.y - tp && my <= h.y + h.h + tp,
+    );
+    return rh
+      ? { id: `sr_${rh.type}`, stageResultType: rh.type, x: rh.x, y: rh.y, w: rh.w, h: rh.h }
+      : null;
+  }
 
   bindCanvasPointer(canvas, {
   onMouseMove(e) {
@@ -114,7 +133,7 @@ export function registerPointerInput(canvas, deps) {
         };
       }
     }
-    if (!hover && game.state === 'stage_result' && game.stageResultTimer > 60 && Array.isArray(game._stageResultHits)) {
+    if (!hover && game.state === 'stage_result' && game.stageResultTimer > STAGE_RESULT_BUTTON_MIN_TIMER && Array.isArray(game._stageResultHits)) {
       const tp = 4;
       const rh = game._stageResultHits.find(h =>
         mx >= h.x - tp && mx <= h.x + h.w + tp && my >= h.y - tp && my <= h.y + h.h + tp,
@@ -173,16 +192,18 @@ export function registerPointerInput(canvas, deps) {
       if (gh) {
         if (gh.type === 'continue') { if (tryContinueFromGameOver()) return; }
         else if (gh.type === 'retry') {
-          game.continueNoStarsThisRun = false;
-          showMessage(null); startBGM(); game.stage = game.startStage; initStars(); updateHUD(); initStage(); game.state = 'playing';
+          gameOverRetryFromStart();
           return;
-        } else if (gh.type === 'boss_retry' && game.selectedBossAbility) {
+        }         else if (gh.type === 'boss_retry' && game.selectedBossAbility) {
           showMessage(null); game.bossRushModeActive = true; game.endlessModeActive = false; startGame(); return;
+        } else if (gh.type === 'stage_select') {
+          gameOverGoStageSelect();
+          return;
         }
       }
     }
     // ステージリザルト: ボタンタップ
-    if (game.state === 'stage_result' && game.stageResultTimer > 60 && Array.isArray(game._stageResultHits)) {
+    if (game.state === 'stage_result' && game.stageResultTimer > STAGE_RESULT_BUTTON_MIN_TIMER && Array.isArray(game._stageResultHits)) {
       const tp = 4;
       const rh = game._stageResultHits.find(h =>
         mx >= h.x - tp && mx <= h.x + h.w + tp && my >= h.y - tp && my <= h.y + h.h + tp,
@@ -258,6 +279,25 @@ export function registerPointerInput(canvas, deps) {
         } else if (sh.type === 'name_btn') {
           const raw = typeof window !== 'undefined' && window.prompt ? window.prompt('プレイヤー名（12文字まで・週次ランキング表示用）', game.displayName || 'PLAYER') : null;
           if (raw != null) saveDisplayName(raw);
+        } else if (sh.type === 'save_export') {
+          downloadInvaderSaveJson();
+          playSound?.('select');
+        } else if (sh.type === 'save_import') {
+          playSound?.('select');
+          triggerInvaderSaveImportFilePick((r) => {
+            if (r && !r.ok && r.error !== 'cancel' && typeof window !== 'undefined' && window.alert) {
+              const map = {
+                json: 'JSONの解析に失敗しました',
+                format: 'セーブファイルの形式が違います',
+                bad_key: '不正なキーがありました',
+                bad_size: 'データが大きすぎます',
+                too_large: '合計サイズが大きすぎます',
+                quota: '保存領域が足りませんでした',
+                read: 'ファイルを読めませんでした',
+              };
+              window.alert(map[r.error] || '読み込みに失敗しました');
+            }
+          });
         }
         return;
       }
@@ -277,15 +317,109 @@ export function registerPointerInput(canvas, deps) {
       const et = game._eventsTabHits.find(h => mx >= h.x && mx <= h.x + h.w && my >= h.y && my <= h.y + h.h);
       if (et) { game.eventsTab = et.idx; return; }
     }
-    // 課金画面
+    // 課金画面（確認 → 支払い方法 → クレジット／コンビニ → 完了）
     if (game.state === 'iap') {
+      if (game.iapModal?.phase === 'cc') {
+        if (Array.isArray(game._iapCcFieldHits)) {
+          const fh = game._iapCcFieldHits.find(h => mx >= h.x && mx <= h.x + h.w && my >= h.y && my <= h.y + h.h);
+          if (fh) {
+            game.iapCcFocus = fh.field;
+            game.iapCcError = null;
+            return;
+          }
+        }
+        if (Array.isArray(game._iapCcKeyHits) && game.iapCcForm && game.iapCcFocus) {
+          const kh = game._iapCcKeyHits.find(h => mx >= h.x && mx <= h.x + h.w && my >= h.y && my <= h.y + h.h);
+          if (kh) {
+            if (kh.key === 'bs') backspaceCc(game.iapCcForm, game.iapCcFocus);
+            else appendCcDigit(game.iapCcForm, game.iapCcFocus, kh.key);
+            game.iapCcError = null;
+            return;
+          }
+        }
+      }
+      if (Array.isArray(game._iapModalHits) && game.iapModal) {
+        const mh = game._iapModalHits.find(h => mx >= h.x && mx <= h.x + h.w && my >= h.y && my <= h.y + h.h);
+        const ph = game.iapModal.phase;
+        const pkg = game.iapModal.pkg;
+        if (mh) {
+          if (mh.id === 'cancel' && ph === 'confirm') {
+            game.iapModal = null;
+            return;
+          }
+          if (mh.id === 'purchase' && ph === 'confirm') {
+            game.iapModal = { pkg, phase: 'payment' };
+            playSound('powerup');
+            return;
+          }
+          if (mh.id === 'back_confirm' && ph === 'payment') {
+            game.iapModal = { pkg, phase: 'confirm' };
+            return;
+          }
+          if (mh.id === 'pick_cc' && ph === 'payment') {
+            game.iapCcForm = { card: '', exp: '', cvv: '' };
+            game.iapCcFocus = 'card';
+            game.iapCcError = null;
+            game.iapModal = { pkg, phase: 'cc' };
+            return;
+          }
+          if (mh.id === 'pick_cvs' && ph === 'payment') {
+            game.iapModal = { pkg, phase: 'cvs' };
+            return;
+          }
+          if (mh.id === 'back_pay' && (ph === 'cc' || ph === 'cvs')) {
+            if (ph === 'cc') {
+              game.iapCcForm = { card: '', exp: '', cvv: '' };
+              game.iapCcFocus = null;
+              game.iapCcError = null;
+            }
+            game.iapModal = { pkg, phase: 'payment' };
+            return;
+          }
+          if (mh.id === 'pay_cc' && ph === 'cc') {
+            const err = validateCcForm(game.iapCcForm || { card: '', exp: '', cvv: '' });
+            if (err) {
+              game.iapCcError = err;
+              return;
+            }
+            game.iapCcError = null;
+            const r = applySimulatedIAPPurchase(pkg, { addGems, saveGachaData });
+            playSound('powerup');
+            const base = r.ok ? r.lines : ['処理に失敗しました'];
+            game.iapModal = {
+              pkg,
+              phase: 'success',
+              resultLines: [...base, '決済：クレジットカード（シミュレーション）'],
+            };
+            return;
+          }
+          if (mh.id === 'pay_cvs' && ph === 'cvs') {
+            const r = applySimulatedIAPPurchase(pkg, { addGems, saveGachaData });
+            playSound('powerup');
+            const base = r.ok ? r.lines : ['処理に失敗しました'];
+            game.iapModal = {
+              pkg,
+              phase: 'success',
+              resultLines: [...base, '決済：コンビニ支払い（シミュレーション）'],
+            };
+            return;
+          }
+          if (mh.id === 'ok' && ph === 'success') {
+            game.iapModal = null;
+            return;
+          }
+        }
+      }
       if (Array.isArray(game._iapAgeHits)) {
         const ah = game._iapAgeHits.find(h => mx >= h.x && mx <= h.x + h.w && my >= h.y && my <= h.y + h.h);
         if (ah) { if (ah.type === 'yes') { game.ageVerified = true; safeLocalStorageSetItem('invader_age_verified', '1'); } else { game.state = 'customize'; } return; }
       }
-      if (Array.isArray(game._iapHits)) {
+      if (!game.iapModal && Array.isArray(game._iapHits)) {
         const ih = game._iapHits.find(h => mx >= h.x && mx <= h.x + h.w && my >= h.y && my <= h.y + h.h);
-        if (ih) { showMessage(`テスト購入: ${ih.pkg.label}\n¥${ih.pkg.price.toLocaleString()}\n（実装準備中）`); setTimeout(() => { if (game.state !== 'iap') return; game.state = 'iap'; hideMessage?.(); }, 2000); return; }
+        if (ih) {
+          game.iapModal = { pkg: ih.pkg, phase: 'confirm' };
+          return;
+        }
       }
     }
     // loadout: equip filter tabs / grid click
@@ -803,7 +937,8 @@ bindCanvasTouch(canvas, {
       game.touchPos = { x: mx, y: my };
     }
     const btns = UI_BUTTONS[game.state] || [];
-    const th0 = btns.find(b => mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) || null;
+    let th0 = btns.find(b => mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) || null;
+    if (!th0) th0 = hitStageResultCanvasBtn(mx, my);
     game.hoveredBtn = th0;
     if (game.state === 'title') {
       game.titleTapHovered = !th0 && isTitleTapLabelHovered(mx, my);
@@ -885,7 +1020,8 @@ bindCanvasTouch(canvas, {
     _touchLastCanvasY = my;
     game.titlePointerX = mx; game.titlePointerY = my;
     const btns = UI_BUTTONS[game.state] || [];
-    const th = btns.find(b => mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) || null;
+    let th = btns.find(b => mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) || null;
+    if (!th) th = hitStageResultCanvasBtn(mx, my);
     game.hoveredBtn = th;
     if (game.state === 'title') {
       game.titleTapHovered = !th && isTitleTapLabelHovered(mx, my);

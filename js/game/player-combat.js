@@ -64,6 +64,7 @@ export function onPlayerHit() {
   const _arm1Red = (game.shopUpgrades?.arm1 || 0) * 2;
   const dmg = Math.max(1, Math.floor(25 * (1 - game.playerStats.def / 100) * turtleMod) - _arm1Red);
   game.playerStats.hp = Math.max(0, game.playerStats.hp - dmg);
+  game.hudHpFlashUntil = game.frameCount + 22;
   if ((game.shopUpgrades?.arm3 || 0) >= 1) {
     const _spikeDmg = Math.max(1, Math.floor(dmg * (game.shopUpgrades.arm3 * 0.30)));
     const _pcx = game.player.x + game.player.w / 2, _pcy = game.player.y + game.player.h / 2;
