@@ -15,6 +15,35 @@ import {
   writeNormalQuestBlob,
 } from './mission-persist.js';
 
+
+const DAILY_ALL_CLEAR_BONUS = { coins: 1500, gems: 6, dust: 40, fuel: 2 };
+
+function hasClaimedAllDailySlots() {
+  if (!(game.missionClaimedSet instanceof Set)) return false;
+  return [0, 1, 2].every((i) => game.missionClaimedSet.has(i));
+}
+
+function claimDailyAllClearBonusIfReady() {
+  if (game.dailyAllBonusClaimed) return false;
+  if (!hasClaimedAllDailySlots()) return false;
+  const r = DAILY_ALL_CLEAR_BONUS;
+  addInboxItem(game, {
+    label: '📅 デイリーコンプリート報酬',
+    coins: r.coins,
+    gems: r.gems,
+    dust: r.dust,
+    fuel: r.fuel,
+    icon: 'daily',
+  });
+  game.dailyAllBonusClaimed = true;
+  game.lifeGainDisplay = {
+    text: '📬 デイリー3件達成！追加報酬を受け取りBOXに追加しました',
+    timer: 220,
+    color: '#ff0',
+  };
+  return true;
+}
+
 function emptyMissionProgress() {
   return { kills: 0, maxCombo: 0, noDmgStages: 0, bossKills: 0, stageClears: 0, ultimateUses: 0, maxWave: 0 };
 }
@@ -30,6 +59,7 @@ export function persistDailyMissionState() {
     missionIds,
     progress: { ...game.sessionProgress },
     claimed,
+    allClaimed: !!game.dailyAllBonusClaimed,
   });
 }
 
@@ -77,11 +107,13 @@ export function ensureDailyMissions() {
     game.sessionMissions = picked;
     game.sessionProgress = emptyMissionProgress();
     game.missionClaimedSet = new Set();
+    game.dailyAllBonusClaimed = false;
     writeDailyMissionBlob({
       date: today,
       missionIds: picked.map((m) => m.id),
       progress: { ...game.sessionProgress },
       claimed: [],
+      allClaimed: false,
     });
     return;
   }
@@ -90,16 +122,19 @@ export function ensureDailyMissions() {
   Object.assign(merged, blob.progress || {});
   game.sessionProgress = merged;
   game.missionClaimedSet = new Set(blob.claimed || []);
+  game.dailyAllBonusClaimed = !!blob.allClaimed;
   if (!dailySessionMissionsOk()) {
     const picked = pickThreeMissions();
     game.sessionMissions = picked;
     game.sessionProgress = emptyMissionProgress();
     game.missionClaimedSet = new Set();
+    game.dailyAllBonusClaimed = false;
     writeDailyMissionBlob({
       date: today,
       missionIds: picked.map((m) => m.id),
       progress: { ...game.sessionProgress },
       claimed: [],
+      allClaimed: false,
     });
   }
 }
@@ -254,6 +289,7 @@ export function checkAndClaimMissions() {
       };
     }
   });
+  claimDailyAllClearBonusIfReady();
   persistDailyMissionState();
 }
 
@@ -290,11 +326,14 @@ export function claimDailyMissionSlot(index) {
     dust: m.reward.dust || 0,
     timer: 90,
   };
+  const allClearAwarded = claimDailyAllClearBonusIfReady();
   persistDailyMissionState();
-  game.lifeGainDisplay = {
-    text: '📬 デイリーミッション達成！受け取りBOXに追加しました',
-    timer: 200,
-    color: '#ff0',
-  };
+  if (!allClearAwarded) {
+    game.lifeGainDisplay = {
+      text: '📬 デイリーミッション達成！受け取りBOXに追加しました',
+      timer: 200,
+      color: '#ff0',
+    };
+  }
   return true;
 }
