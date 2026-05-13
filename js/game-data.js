@@ -353,13 +353,19 @@ export const BOSS_NAMES={burst:'BURST COMMANDER',split:'SPLIT TYRANT',teleport:'
 export const MISSION_POOL=[
   {id:'kill30',  label:'敵30体撃破',        check:p=>p.kills>=30,  reward:{coins:300,dust:0,gems:0}, progress:p=>({cur:Math.min(p.kills,30),max:30})},
   {id:'kill80',  label:'敵80体撃破',        check:p=>p.kills>=80,  reward:{coins:800,dust:0,gems:2}, progress:p=>({cur:Math.min(p.kills,80),max:80})},
+  {id:'kill150', label:'敵150体撃破',       check:p=>p.kills>=150, reward:{coins:1500,dust:20,gems:4}, progress:p=>({cur:Math.min(p.kills,150),max:150})},
   {id:'combo5',  label:'5コンボ達成',       check:p=>p.maxCombo>=5, reward:{coins:200,dust:5,gems:0}, progress:p=>({cur:Math.min(p.maxCombo,5),max:5})},
   {id:'combo10', label:'10コンボ達成',      check:p=>p.maxCombo>=10,reward:{coins:500,dust:15,gems:3}, progress:p=>({cur:Math.min(p.maxCombo,10),max:10})},
+  {id:'combo20', label:'20コンボ達成',      check:p=>p.maxCombo>=20,reward:{coins:1400,dust:30,gems:6}, progress:p=>({cur:Math.min(p.maxCombo,20),max:20})},
   {id:'nodmg',   label:'ステージノーダメクリア',check:p=>p.noDmgStages>=1,reward:{coins:400,dust:10,gems:2}, progress:p=>({cur:Math.min(p.noDmgStages,1),max:1})},
   {id:'boss1',   label:'ボスを撃破',        check:p=>p.bossKills>=1,reward:{coins:600,dust:20,gems:5}, progress:p=>({cur:Math.min(p.bossKills,1),max:1})},
+  {id:'boss2',   label:'ボスを2体撃破',     check:p=>p.bossKills>=2,reward:{coins:1300,dust:35,gems:8}, progress:p=>({cur:Math.min(p.bossKills,2),max:2})},
   {id:'clear3',  label:'3ステージクリア',   check:p=>p.stageClears>=3,reward:{coins:1000,dust:30,gems:5}, progress:p=>({cur:Math.min(p.stageClears,3),max:3})},
+  {id:'clear5',  label:'5ステージクリア',   check:p=>p.stageClears>=5,reward:{coins:1800,dust:45,gems:9}, progress:p=>({cur:Math.min(p.stageClears,5),max:5})},
   {id:'ultimate',label:'必殺技を使用',      check:p=>p.ultimateUses>=1,reward:{coins:200,dust:5,gems:0}, progress:p=>({cur:Math.min(p.ultimateUses,1),max:1})},
+  {id:'ultimate3',label:'必殺技を3回使用',  check:p=>p.ultimateUses>=3,reward:{coins:900,dust:20,gems:3}, progress:p=>({cur:Math.min(p.ultimateUses,3),max:3})},
   {id:'wave3',   label:'ウェーブ3を突破',   check:p=>p.maxWave>=3, reward:{coins:350,dust:8,gems:2}, progress:p=>({cur:Math.min(p.maxWave,3),max:3})},
+  {id:'wave6',   label:'ウェーブ6を突破',   check:p=>p.maxWave>=6, reward:{coins:1200,dust:28,gems:5}, progress:p=>({cur:Math.min(p.maxWave,6),max:6})},
 ];
 /** 通常クエスト（永続・達成で消えて次の目標が表示）。check(progress, game) */
 export const NORMAL_QUEST_POOL=[
@@ -367,6 +373,8 @@ export const NORMAL_QUEST_POOL=[
     check:(s,_g)=>s.totalKills>=500, progress:(s,_g)=>({cur:Math.min(s.totalKills,500),max:500})},
   {id:'nq_k2000', label:'通算2000体撃破', reward:{coins:4000,dust:60,gems:5},
     check:(s,_g)=>s.totalKills>=2000, progress:(s,_g)=>({cur:Math.min(s.totalKills,2000),max:2000})},
+  {id:'nq_k5000', label:'通算5000体撃破', reward:{coins:9500,dust:140,gems:14},
+    check:(s,_g)=>s.totalKills>=5000, progress:(s,_g)=>({cur:Math.min(s.totalKills,5000),max:5000})},
   {id:'nq_boss5', label:'通算ボス5体撃破', reward:{coins:2000,dust:35,gems:3},
     check:(s,_g)=>s.totalBossKills>=5, progress:(s,_g)=>({cur:Math.min(s.totalBossKills,5),max:5})},
   {id:'nq_boss20', label:'通算ボス20体撃破', reward:{coins:8000,dust:100,gems:10},
@@ -375,14 +383,24 @@ export const NORMAL_QUEST_POOL=[
     check:(_s,g)=>g.highestStage>=12, progress:(_s,g)=>({cur:Math.min(g.highestStage,12),max:12})},
   {id:'nq_hs25', label:'最高到達STAGE25', reward:{coins:9000,dust:120,gems:12},
     check:(_s,g)=>g.highestStage>=25, progress:(_s,g)=>({cur:Math.min(g.highestStage,25),max:25})},
+  {id:'nq_hs40', label:'最高到達STAGE40', reward:{coins:18000,dust:220,gems:22},
+    check:(_s,g)=>g.highestStage>=40, progress:(_s,g)=>({cur:Math.min(g.highestStage,40),max:40})},
   {id:'nq_clear15', label:'通算15ステージクリア', reward:{coins:3500,dust:50,gems:4},
     check:(s,_g)=>s.totalStageClears>=15, progress:(s,_g)=>({cur:Math.min(s.totalStageClears,15),max:15})},
+  {id:'nq_clear50', label:'通算50ステージクリア', reward:{coins:11000,dust:170,gems:15},
+    check:(s,_g)=>s.totalStageClears>=50, progress:(s,_g)=>({cur:Math.min(s.totalStageClears,50),max:50})},
   {id:'nq_ulti20', label:'必殺技 通算20回', reward:{coins:1800,dust:30,gems:2},
     check:(s,_g)=>s.totalUltimates>=20, progress:(s,_g)=>({cur:Math.min(s.totalUltimates,20),max:20})},
+  {id:'nq_ulti80', label:'必殺技 通算80回', reward:{coins:9000,dust:120,gems:11},
+    check:(s,_g)=>s.totalUltimates>=80, progress:(s,_g)=>({cur:Math.min(s.totalUltimates,80),max:80})},
   {id:'nq_combo15', label:'15コンボ以上を記録', reward:{coins:1500,dust:25,gems:2},
     check:(s,_g)=>s.maxComboEver>=15, progress:(s,_g)=>({cur:Math.min(s.maxComboEver,15),max:15})},
+  {id:'nq_combo25', label:'25コンボ以上を記録', reward:{coins:7000,dust:100,gems:8},
+    check:(s,_g)=>s.maxComboEver>=25, progress:(s,_g)=>({cur:Math.min(s.maxComboEver,25),max:25})},
   {id:'nq_nodmg3', label:'ノーダメクリア 通算3回', reward:{coins:2200,dust:35,gems:3},
     check:(s,_g)=>s.totalNoDmgClears>=3, progress:(s,_g)=>({cur:Math.min(s.totalNoDmgClears,3),max:3})},
+  {id:'nq_nodmg10', label:'ノーダメクリア 通算10回', reward:{coins:9800,dust:150,gems:12},
+    check:(s,_g)=>s.totalNoDmgClears>=10, progress:(s,_g)=>({cur:Math.min(s.totalNoDmgClears,10),max:10})},
 ];
 export const MAT_LABEL={scrap:'🔩スクラップ',core:'⚡コア',crystal:'💎結晶',composite:'🔷コンポジット',fusionStone:'🔮融合石',starCrystal:'💫星結晶'};
 export const MAT_COLOR={scrap:'#aaa',core:'#44ccff',crystal:'#cc88ff',composite:'#ffaa44',fusionStone:'#bb88ff',starCrystal:'#ffffaa'};

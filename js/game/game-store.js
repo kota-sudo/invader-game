@@ -321,6 +321,7 @@ export const game = {
     maxWave: 0
   },
   missionClaimedSet: new Set(),
+  dailyAllBonusClaimed: false,
   /** ローカル日付キー（YYYY-MM-DD）。`ensureDailyMissions` が一致なら再読込を省略 */
   dailyMissionLoadedDate: '',
   questLifetime: {
