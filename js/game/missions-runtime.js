@@ -17,6 +17,7 @@ import {
 
 
 const DAILY_ALL_CLEAR_BONUS = { coins: 1500, gems: 6, dust: 40, fuel: 2 };
+const DAILY_ALL_CLEAR_DISPLAY_TIMER = 220;
 
 function hasClaimedAllDailySlots() {
   if (!(game.missionClaimedSet instanceof Set)) return false;
@@ -38,7 +39,7 @@ function claimDailyAllClearBonusIfReady() {
   game.dailyAllBonusClaimed = true;
   game.lifeGainDisplay = {
     text: '📬 デイリー3件達成！追加報酬を受け取りBOXに追加しました',
-    timer: 220,
+    timer: DAILY_ALL_CLEAR_DISPLAY_TIMER,
     color: '#ff0',
   };
   return true;
